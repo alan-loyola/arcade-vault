@@ -156,7 +156,7 @@ export function GamePlayer({ gameId, title }: GamePlayerProps) {
               <button type="button" className="btn" onClick={restart}>
                 JUGAR DE NUEVO
               </button>
-              <Link href="/" className="btn magenta">
+              <Link href="/juegos" className="btn magenta">
                 VOLVER AL VAULT
               </Link>
             </div>
