@@ -13,7 +13,7 @@ export function AuthForm() {
   // Auth solo visual: no se crea sesión, solo se navega a la biblioteca.
   const submit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    router.push("/");
+    router.push("/juegos");
   };
 
   return (
@@ -95,7 +95,7 @@ export function AuthForm() {
           type="button"
           className="btn ghost"
           style={{ width: "100%", marginTop: 10 }}
-          onClick={() => router.push("/")}
+          onClick={() => router.push("/juegos")}
         >
           JUGAR COMO INVITADO
         </button>
