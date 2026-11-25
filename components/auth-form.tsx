@@ -1,21 +1,26 @@
 "use client";
-
-import { useState } from "react";
+import { useActionState, useState, startTransition } from "react";
 import { useRouter } from "next/navigation";
-
+import { signIn, signUp } from "@/app/auth/actions";
+import type { AuthState } from "@/lib/scores";
+const IDLE: AuthState = { status: "idle" };
 export function AuthForm() {
   const router = useRouter();
   const [tab, setTab] = useState<"in" | "up">("in");
   const [user, setUser] = useState("");
   const [pass, setPass] = useState("");
   const [email, setEmail] = useState("");
-
-  // Auth solo visual: no se crea sesión, solo se navega a la biblioteca.
+  const [inState, inAction, inPending] = useActionState(signIn, IDLE);
+  const [upState, upAction, upPending] = useActionState(signUp, IDLE);
+  const state = tab === "in" ? inState : upState;
+  const pending = tab === "in" ? inPending : upPending;
+  // Se invoca la acción a mano (sin el reset automático de <form action>)
+  // para conservar lo escrito cuando el servidor devuelve un error.
   const submit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    router.push("/juegos");
+    const data = new FormData(e.currentTarget);
+    startTransition(() => (tab === "in" ? inAction : upAction)(data));
   };
-
   return (
     <div className="av-auth-wrap fade-in">
       <div className="auth-card">
@@ -34,7 +39,6 @@ export function AuthForm() {
             ACCESO AL SISTEMA · v2.6
           </div>
         </div>
-
         <div className="auth-tabs">
           <button
             type="button"
@@ -51,46 +55,69 @@ export function AuthForm() {
             CREAR CUENTA
           </button>
         </div>
-
         <form onSubmit={submit}>
-          <div className="field">
-            <label>Usuario</label>
-            <input
-              value={user}
-              onChange={(e) => setUser(e.target.value)}
-              placeholder="px_kai"
-            />
-          </div>
           {tab === "up" && (
             <div className="field slide-in">
-              <label>Correo electrónico</label>
+              <label>Usuario</label>
               <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="jugador@vault.gg"
+                name="username"
+                value={user}
+                onChange={(e) => setUser(e.target.value)}
+                placeholder="px_kai"
+                autoComplete="username"
+                minLength={3}
+                maxLength={12}
+                required
               />
             </div>
           )}
           <div className="field">
+            <label>Correo</label>
+            <input
+              name="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="jugador@vault.gg"
+              autoComplete="email"
+              required
+            />
+          </div>
+          <div className="field">
             <label>Contraseña</label>
             <input
+              name="password"
               type="password"
               value={pass}
               onChange={(e) => setPass(e.target.value)}
               placeholder="••••••••"
+              autoComplete={tab === "in" ? "current-password" : "new-password"}
+              minLength={tab === "up" ? 8 : undefined}
+              required
             />
           </div>
-
+          {state.status === "error" && (
+            <div
+              role="alert"
+              className="mono neon-magenta"
+              style={{ fontSize: 11, letterSpacing: "0.1em", marginTop: 4 }}
+            >
+              {state.message}
+            </div>
+          )}
           <button
             className="btn lg"
             type="submit"
+            disabled={pending}
             style={{ width: "100%", marginTop: 8 }}
           >
-            {tab === "in" ? "ENTRAR AL VAULT" : "CREAR Y JUGAR"}
+            {pending
+              ? "CONECTANDO…"
+              : tab === "in"
+                ? "ENTRAR AL VAULT"
+                : "CREAR Y JUGAR"}
           </button>
         </form>
-
         <button
           type="button"
           className="btn ghost"
@@ -99,7 +126,6 @@ export function AuthForm() {
         >
           JUGAR COMO INVITADO
         </button>
-
         <div className="auth-divider">O CONTINÚA CON</div>
         <div className="social">
           <button className="btn ghost" type="button">
@@ -109,7 +135,6 @@ export function AuthForm() {
             ▣ GITHUB
           </button>
         </div>
-
         <div
           style={{
             marginTop: 18,

@@ -3,6 +3,9 @@
 .playwright-screenshots/*
 .playwright-mcp/*
 
+#IDE
+.idea
+
 # dependencies
 /node_modules
 /.pnp

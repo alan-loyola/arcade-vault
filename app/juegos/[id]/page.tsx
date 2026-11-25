@@ -1,19 +1,79 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { GAMES, seededScores } from "@/lib/games";
+import { GAMES } from "@/lib/games";
+import { getTopScores } from "@/lib/scores";
+
+const DETAIL_LIMIT = 10;
+
+// Lee puntuaciones de la base de datos (dato de petición): va en <Suspense>.
+async function Leaderboard({ gameId }: { gameId: string }) {
+  const scores = await getTopScores(gameId, DETAIL_LIMIT);
+
+  if (scores.length === 0) {
+    return (
+      <div
+        className="pixel neon-yellow"
+        style={{
+          fontSize: 10,
+          textAlign: "center",
+          letterSpacing: "0.12em",
+          lineHeight: 1.8,
+          padding: "24px 8px",
+        }}
+      >
+        AÚN NO HAY PUNTUACIONES · SÉ EL PRIMERO
+      </div>
+    );
+  }
+
+  return scores.map((r, i) => (
+    <div
+      key={r.rank}
+      className={
+        "lb-row" +
+        (i === 0 ? " top1" : i === 1 ? " top2" : i === 2 ? " top3" : "")
+      }
+    >
+      <div className="rk">#{String(r.rank).padStart(2, "0")}</div>
+      <div className="pl">
+        {r.username}
+        <div
+          style={{
+            fontSize: 10,
+            color: "var(--ink-faint)",
+            letterSpacing: "0.1em",
+          }}
+        >
+          {r.date}
+        </div>
+      </div>
+      <div className="sc">{r.score.toLocaleString("es-ES")}</div>
+    </div>
+  ));
+}
 
 export function generateStaticParams() {
   return GAMES.map((g) => ({ id: g.id }));
 }
 
-export default async function GameDetailPage({
+export default function GameDetailPage({ params }: PageProps<"/juegos/[id]">) {
+  return (
+    <Suspense fallback={null}>
+      <GameDetail params={params} />
+    </Suspense>
+  );
+}
+
+// Lee params (dato de petición), así que va dentro de <Suspense>.
+async function GameDetail({
   params,
-}: PageProps<"/juegos/[id]">) {
+}: {
+  params: PageProps<"/juegos/[id]">["params"];
+}) {
   const { id } = await params;
   const game = GAMES.find((g) => g.id === id);
   if (!game) notFound();
-
-  const scores = seededScores(id.length * 17 + 3, 10);
 
   return (
     <div className="av-detail fade-in">
@@ -74,30 +134,9 @@ export default async function GameDetailPage({
       <aside>
         <div className="leaderboard">
           <h3>MEJORES PUNTUACIONES</h3>
-          {scores.map((r, i) => (
-            <div
-              key={r.name}
-              className={
-                "lb-row" +
-                (i === 0 ? " top1" : i === 1 ? " top2" : i === 2 ? " top3" : "")
-              }
-            >
-              <div className="rk">#{String(r.rank).padStart(2, "0")}</div>
-              <div className="pl">
-                {r.name}
-                <div
-                  style={{
-                    fontSize: 10,
-                    color: "var(--ink-faint)",
-                    letterSpacing: "0.1em",
-                  }}
-                >
-                  {r.date}
-                </div>
-              </div>
-              <div className="sc">{r.score.toLocaleString("es-ES")}</div>
-            </div>
-          ))}
+          <Suspense fallback={null}>
+            <Leaderboard gameId={game.id} />
+          </Suspense>
         </div>
       </aside>
     </div>
