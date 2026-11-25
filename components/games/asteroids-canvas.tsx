@@ -55,13 +55,6 @@ export function AsteroidsCanvas({
       height={H}
       aria-label="Juego ASTEROIDES"
       className="asteroids-canvas"
-      style={{
-        display: "block",
-        width: "100%",
-        height: "auto",
-        aspectRatio: "4 / 3",
-        background: "#000",
-      }}
     />
   );
 }

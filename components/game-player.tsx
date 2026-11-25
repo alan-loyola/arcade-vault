@@ -111,7 +111,11 @@ export function GamePlayer({ gameId, title, username }: GamePlayerProps) {
       </div>
 
       <div className="crt">
-        <div className="crt-screen">
+        <div
+          className={
+            isAsteroids ? "crt-screen crt-screen--canvas" : "crt-screen"
+          }
+        >
           {isAsteroids ? (
             <AsteroidsCanvas
               key={runKey}
@@ -161,6 +165,12 @@ export function GamePlayer({ gameId, title, username }: GamePlayerProps) {
           <span>CARGA · 1MB</span>
         </div>
       </div>
+
+      {isAsteroids && (
+        <p className="game-controls">
+          ← → ROTAR · ↑ IMPULSO · ESPACIO DISPARAR
+        </p>
+      )}
 
       {over && (
         <div className="modal-bd">
