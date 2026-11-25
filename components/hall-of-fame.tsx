@@ -1,13 +1,14 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import { GAMES } from "@/lib/games";
+import type { Game } from "@/lib/game-types";
 import type { ScoreEntry } from "@/lib/scores";
 interface HallOfFameProps {
+  games: Pick<Game, "id" | "title">[];
   scoresByGame: Record<string, ScoreEntry[]>;
 }
-export function HallOfFame({ scoresByGame }: HallOfFameProps) {
-  const [tab, setTab] = useState(GAMES[0].id);
+export function HallOfFame({ games, scoresByGame }: HallOfFameProps) {
+  const [tab, setTab] = useState(games[0]?.id ?? "");
   const rows = scoresByGame[tab] ?? [];
   const [first, second, third] = rows;
   return (
@@ -19,7 +20,7 @@ export function HallOfFame({ scoresByGame }: HallOfFameProps) {
         </p>
       </div>
       <div className="hall-tabs">
-        {GAMES.map((g) => (
+        {games.map((g) => (
           <button
             key={g.id}
             type="button"

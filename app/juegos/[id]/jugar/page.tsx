@@ -1,10 +1,10 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
-import { GAMES } from "@/lib/games";
+import { getGame, getGameIds } from "@/lib/games";
 import { GamePlayer } from "@/components/game-player";
 import { getCurrentUser } from "@/lib/auth";
-export function generateStaticParams() {
-  return GAMES.map((g) => ({ id: g.id }));
+export async function generateStaticParams() {
+  return getGameIds();
 }
 // Lee params y la sesión (datos de petición), así que va dentro de <Suspense>.
 async function Player({
@@ -13,7 +13,7 @@ async function Player({
   params: PageProps<"/juegos/[id]/jugar">["params"];
 }) {
   const { id } = await params;
-  const game = GAMES.find((g) => g.id === id);
+  const game = await getGame(id);
   if (!game) notFound();
   const user = await getCurrentUser();
   return (

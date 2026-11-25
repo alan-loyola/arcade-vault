@@ -1,5 +1,5 @@
 "use server";
-import { GAMES } from "@/lib/games";
+import { getGame } from "@/lib/games";
 import { createClient } from "@/lib/supabase/server";
 import type { SaveScoreResult } from "@/lib/scores";
 const MAX_SCORE = 9_999_999;
@@ -9,14 +9,15 @@ export async function saveScore(
   score: number,
   level: number,
 ): Promise<SaveScoreResult> {
-  const validGame = GAMES.some((g) => g.id === gameId);
   const validScore =
     Number.isInteger(score) && score >= 0 && score <= MAX_SCORE;
   const validLevel =
     Number.isInteger(level) && level >= 1 && level <= MAX_LEVEL;
-  if (!validGame || !validScore || !validLevel) {
-    return { ok: false, reason: "invalid" };
-  }
+  if (!validScore || !validLevel) return { ok: false, reason: "invalid" };
+  // El juego debe existir en la BD (además de la FK de scores.game_id).
+  const validGame =
+    typeof gameId === "string" && (await getGame(gameId)) !== null;
+  if (!validGame) return { ok: false, reason: "invalid" };
   const supabase = await createClient();
   // El user_id sale siempre de la sesión, nunca del cliente.
   const {

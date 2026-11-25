@@ -1,15 +1,12 @@
 "use client";
-
 import { useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { Game } from "@/lib/games";
-
-export function GameCard({ game }: { game: Game }) {
+import type { GameWithStats } from "@/lib/game-types";
+export function GameCard({ game }: { game: GameWithStats }) {
   const router = useRouter();
   const tiltRef = useRef<HTMLDivElement>(null);
   const href = `/juegos/${game.id}`;
-
   const onMove = (e: React.MouseEvent<HTMLDivElement>) => {
     const el = tiltRef.current;
     if (!el) return;
@@ -23,10 +20,12 @@ export function GameCard({ game }: { game: Game }) {
     if (!el) return;
     el.style.transform = "";
   };
-
   const btnColor =
-    game.color === "magenta" ? "magenta" : game.color === "yellow" ? "yellow" : "";
-
+    game.color === "magenta"
+      ? "magenta"
+      : game.color === "yellow"
+        ? "yellow"
+        : "";
   return (
     <div
       ref={tiltRef}

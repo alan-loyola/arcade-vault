@@ -1,5 +1,7 @@
+import { cacheLife } from "next/cache";
 import { connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createPublicClient } from "@/lib/supabase/public";
 import type { Tables } from "@/lib/supabase/database.types";
 import type {
   AccentColor,
@@ -41,6 +43,19 @@ export async function getGames(): Promise<Game[]> {
     return [];
   }
   return data.map(toGame);
+}
+// Ids del catálogo para generateStaticParams. En build no hay petición
+// (sin cookies ni connection()), así que usa el cliente público y se cachea.
+export async function getGameIds(): Promise<{ id: string }[]> {
+  "use cache";
+  cacheLife("hours");
+  const supabase = createPublicClient();
+  const { data, error } = await supabase
+    .from("games")
+    .select("id")
+    .order("sort_order", { ascending: true });
+  if (error) throw error;
+  return data;
 }
 // Un juego por id, o null si no existe.
 export async function getGame(id: string): Promise<Game | null> {
