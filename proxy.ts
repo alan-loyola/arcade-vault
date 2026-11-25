@@ -30,7 +30,14 @@ export async function proxy(request: NextRequest) {
   );
   // No ejecutar código entre createServerClient y getClaims: valida el JWT
   // y, si ha caducado, renueva la sesión.
-  await supabase.auth.getClaims();
+  const { data } = await supabase.auth.getClaims();
+  // Con sesión activa, /auth no tiene sentido: redirige a la biblioteca
+  // conservando las cookies de sesión que se hayan renovado.
+  if (data?.claims && request.nextUrl.pathname === "/auth") {
+    const redirect = NextResponse.redirect(new URL("/juegos", request.url));
+    response.cookies.getAll().forEach((cookie) => redirect.cookies.set(cookie));
+    return redirect;
+  }
   return response;
 }
 export const config = {

@@ -1,33 +1,34 @@
 import type { Metadata } from "next";
-import { Press_Start_2P, JetBrains_Mono, Courier_Prime } from "next/font/google";
+import {
+  Press_Start_2P,
+  JetBrains_Mono,
+  Courier_Prime,
+} from "next/font/google";
+import { Suspense } from "react";
 import { Nav } from "@/components/nav";
+import { NavWithUser } from "@/components/nav-with-user";
 import { Footer } from "@/components/footer";
 import "./globals.css";
-
 const pressStart = Press_Start_2P({
   variable: "--font-press-start",
   subsets: ["latin"],
   weight: "400",
 });
-
 const jetbrainsMono = JetBrains_Mono({
   variable: "--font-jetbrains",
   subsets: ["latin"],
   weight: ["400", "500", "700"],
 });
-
 const courierPrime = Courier_Prime({
   variable: "--font-courier",
   subsets: ["latin"],
   weight: ["400", "700"],
 });
-
 export const metadata: Metadata = {
   title: "Arcade Vault · Portal Retro",
   description:
     "Plataforma para jugar online y competir por la mayor cantidad de puntos.",
 };
-
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
@@ -38,7 +39,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <div className="av-bg" />
         <div className="av-noise" />
         <div id="root">
-          <Nav />
+          <Suspense fallback={<Nav user={undefined} />}>
+            <NavWithUser />
+          </Suspense>
           <main className="av-main">{children}</main>
           <Footer />
         </div>
