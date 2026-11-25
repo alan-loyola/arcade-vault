@@ -29,6 +29,8 @@ export interface AsteroidsEngine {
   destroy(): void; // cancela el loop y quita todos los listeners
 }
 type State = "playing" | "dead" | "gameover";
+// Únicas teclas que el motor intercepta
+const GAME_KEYS = new Set(["ArrowUp", "ArrowLeft", "ArrowRight", "Space"]);
 export function createAsteroidsEngine(
   canvas: HTMLCanvasElement,
   callbacks: AsteroidsCallbacks,
@@ -59,7 +61,7 @@ export function createAsteroidsEngine(
   let paused = false;
   let destroyed = false;
   let gameOverNotified = false;
-  // ── Entrada (los listeners se registran en el paso 4) ───────────────────────
+  // ── Entrada de teclado ──────────────────────────────────────────────────────
   const keys: Keys = {};
   const justPressed: Keys = {};
   function pressed(code: string): boolean {
@@ -70,6 +72,35 @@ export function createAsteroidsEngine(
   function clearInput() {
     for (const code of Object.keys(keys)) keys[code] = false;
     for (const code of Object.keys(justPressed)) justPressed[code] = false;
+  }
+  function isTextField(target: EventTarget | null): boolean {
+    if (!(target instanceof HTMLElement)) return false;
+    return (
+      target instanceof HTMLInputElement ||
+      target instanceof HTMLTextAreaElement ||
+      target instanceof HTMLSelectElement ||
+      target.isContentEditable
+    );
+  }
+  // Solo se atiende (y se hace preventDefault) mientras la partida está
+  // activa: en pausa, con el modal abierto o tras el fin, las teclas
+  // recuperan su comportamiento normal.
+  function isListening(): boolean {
+    return started && !paused && !destroyed && state !== "gameover";
+  }
+  function onKeyDown(e: KeyboardEvent) {
+    if (!GAME_KEYS.has(e.code)) return;
+    if (!isListening()) return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (isTextField(e.target)) return;
+    e.preventDefault();
+    if (!keys[e.code]) justPressed[e.code] = true;
+    keys[e.code] = true;
+  }
+  function onKeyUp(e: KeyboardEvent) {
+    if (!GAME_KEYS.has(e.code)) return;
+    keys[e.code] = false;
+    if (isListening() && !isTextField(e.target)) e.preventDefault();
   }
   // ── Notificación a React (solo cuando cambian los valores) ──────────────────
   let emitted = { score, level, lives };
@@ -251,6 +282,8 @@ export function createAsteroidsEngine(
     start() {
       if (started || destroyed) return;
       started = true;
+      window.addEventListener("keydown", onKeyDown);
+      window.addEventListener("keyup", onKeyUp);
       initGame();
       draw(lastTs);
       lastTime = null;
@@ -270,6 +303,8 @@ export function createAsteroidsEngine(
     },
     destroy() {
       destroyed = true;
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
       stopLoop();
       clearInput();
     },
