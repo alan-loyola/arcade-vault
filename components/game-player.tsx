@@ -1,20 +1,24 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
+import { saveScore } from "@/app/juegos/[id]/jugar/actions";
 
 interface GamePlayerProps {
   gameId: string;
   title: string;
+  username: string | null; // null = invitado (sin sesión)
 }
 
-export function GamePlayer({ gameId, title }: GamePlayerProps) {
+export function GamePlayer({ gameId, title, username }: GamePlayerProps) {
   const [{ score, level }, setStats] = useState({ score: 0, level: 1 });
   const [lives, setLives] = useState(3);
   const [paused, setPaused] = useState(false);
   const [over, setOver] = useState(false);
-  const [name, setName] = useState("INVITADO");
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState(false);
+  const [saving, startSaving] = useTransition();
+  const name = username ?? "INVITADO";
 
   // El puntaje inicia en 0 y solo sube tras montar (evita desajustes de hidratación).
   useEffect(() => {
@@ -37,17 +41,16 @@ export function GamePlayer({ gameId, title }: GamePlayerProps) {
     setPaused(false);
     setOver(false);
     setSaved(false);
+    setSaveError(false);
   };
 
-  const saveScore = () => {
-    try {
-      const all = JSON.parse(localStorage.getItem("av_scores") || "[]");
-      all.push({ game: gameId, score, name, at: Date.now() });
-      localStorage.setItem("av_scores", JSON.stringify(all));
-    } catch {
-      // localStorage no disponible (modo privado): seguimos sin persistir.
-    }
-    setSaved(true);
+  const handleSave = () => {
+    setSaveError(false);
+    startSaving(async () => {
+      const result = await saveScore(gameId, score, level);
+      if (result.ok) setSaved(true);
+      else setSaveError(true);
+    });
   };
 
   return (
@@ -136,21 +139,39 @@ export function GamePlayer({ gameId, title }: GamePlayerProps) {
             <h2>FIN DEL JUEGO</h2>
             <div className="final-label">PUNTUACIÓN FINAL</div>
             <div className="final">{score.toLocaleString("es-ES")}</div>
-            {!saved ? (
-              <div className="input-row">
-                <input
-                  value={name}
-                  onChange={(e) =>
-                    setName(e.target.value.toUpperCase().slice(0, 10))
-                  }
-                  placeholder="TUS INICIALES"
-                />
-                <button type="button" className="btn yellow" onClick={saveScore}>
-                  GUARDAR PUNTUACIÓN
-                </button>
-              </div>
-            ) : (
+            {saved ? (
               <div className="toast-saved">▸ PUNTUACIÓN GUARDADA_</div>
+            ) : username ? (
+              <>
+                <div className="input-row">
+                  <input value={name} readOnly aria-label="Jugador" />
+                  <button
+                    type="button"
+                    className="btn yellow"
+                    onClick={handleSave}
+                    disabled={saving}
+                  >
+                    {saving ? "GUARDANDO…" : "GUARDAR PUNTUACIÓN"}
+                  </button>
+                </div>
+                {saveError && (
+                  <div
+                    role="alert"
+                    className="mono neon-magenta"
+                    style={{
+                      fontSize: 11,
+                      letterSpacing: "0.1em",
+                      marginTop: 8,
+                    }}
+                  >
+                    NO SE PUDO GUARDAR · INTÉNTALO DE NUEVO
+                  </div>
+                )}
+              </>
+            ) : (
+              <Link href="/auth" className="btn yellow">
+                INICIA SESIÓN PARA GUARDAR
+              </Link>
             )}
             <div className="actions">
               <button type="button" className="btn" onClick={restart}>
