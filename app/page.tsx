@@ -11,13 +11,23 @@ import {
   STATS,
   TOP_PLAYERS,
 } from "@/lib/home";
-import { GAMES } from "@/lib/games";
-
+import { Suspense } from "react";
+import { getGamesWithStats } from "@/lib/games";
+// Lee el catálogo de la BD (dato de petición): va dentro de <Suspense>.
+async function FeaturedGames() {
+  const games = await getGamesWithStats();
+  return (
+    <div className="mini-rail">
+      {games.slice(0, 6).map((g) => (
+        <MiniCard key={g.id} game={g} />
+      ))}
+    </div>
+  );
+}
 export default function Home() {
   return (
     <div className="home fade-in">
       <Reveal />
-
       {/* HERO */}
       <section className="home-hero">
         <FloatingSilhouettes />
@@ -49,7 +59,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
       {/* WHY */}
       <section className="home-section reveal">
         <div className="section-head">
@@ -71,7 +80,6 @@ export default function Home() {
           ))}
         </div>
       </section>
-
       {/* GAMES PREVIEW */}
       <section className="home-section reveal">
         <div className="section-head">
@@ -79,18 +87,15 @@ export default function Home() {
           <h2 className="section-title">JUEGOS DISPONIBLES AHORA</h2>
           <div className="section-rule"></div>
         </div>
-        <div className="mini-rail">
-          {GAMES.slice(0, 6).map((g) => (
-            <MiniCard key={g.id} game={g} />
-          ))}
-        </div>
+        <Suspense fallback={<div className="mini-rail" />}>
+          <FeaturedGames />
+        </Suspense>
         <div style={{ textAlign: "center", marginTop: 24 }}>
           <Link href="/juegos" className="btn lg">
             VER TODOS LOS JUEGOS →
           </Link>
         </div>
       </section>
-
       {/* STATS */}
       <section className="home-stats reveal">
         <div className="stats-inner">
@@ -107,7 +112,6 @@ export default function Home() {
           ))}
         </div>
       </section>
-
       {/* RECENT ACTIVITY / LEADERBOARD */}
       <section className="home-section reveal">
         <div className="section-head">
@@ -129,16 +133,19 @@ export default function Home() {
                 >
                   <span className={"tk-p neon-" + r.color}>{r.player}</span>
                   <span className="tk-mid">▸ {r.game}</span>
-                  <span className="tk-s">+{r.score.toLocaleString("es-ES")}</span>
+                  <span className="tk-s">
+                    +{r.score.toLocaleString("es-ES")}
+                  </span>
                   <span className="tk-t">{r.when}</span>
                 </div>
               ))}
             </div>
           </div>
-
           <div className="activity-card">
             <div className="ac-head">
-              <div className="ac-title pixel neon-magenta">▸ TOP JUGADORES · HOY</div>
+              <div className="ac-title pixel neon-magenta">
+                ▸ TOP JUGADORES · HOY
+              </div>
               <Link href="/salon" className="lb-link">
                 VER SALÓN →
               </Link>
@@ -149,19 +156,25 @@ export default function Home() {
                   key={r.player}
                   className={"top-row" + (i < 3 ? ` top${i + 1}` : "")}
                 >
-                  <span className="tp-rk">#{String(r.rank).padStart(2, "0")}</span>
+                  <span className="tp-rk">
+                    #{String(r.rank).padStart(2, "0")}
+                  </span>
                   <span className="tp-bar">
-                    <span className="tp-fill" style={{ width: 100 - i * 16 + "%" }}></span>
+                    <span
+                      className="tp-fill"
+                      style={{ width: 100 - i * 16 + "%" }}
+                    ></span>
                   </span>
                   <span className="tp-p">{r.player}</span>
-                  <span className="tp-s">{r.score.toLocaleString("es-ES")}</span>
+                  <span className="tp-s">
+                    {r.score.toLocaleString("es-ES")}
+                  </span>
                 </div>
               ))}
             </div>
           </div>
         </div>
       </section>
-
       {/* PRICING */}
       <section className="home-section reveal">
         <div className="section-head">
@@ -183,7 +196,11 @@ export default function Home() {
                 <li key={perk}>✔ {perk}</li>
               ))}
             </ul>
-            <Link href="/auth" className="btn xl pulse" style={{ width: "100%" }}>
+            <Link
+              href="/auth"
+              className="btn xl pulse"
+              style={{ width: "100%" }}
+            >
               EMPEZAR GRATIS →
             </Link>
             <div className="pc-foot">No pedimos tarjeta. Nunca lo haremos.</div>
@@ -193,7 +210,6 @@ export default function Home() {
               PLAY
             </div>
           </div>
-
           <div className="pricing-faq">
             {FAQS.map((f) => (
               <div key={f.q} className="faq-item">
@@ -204,7 +220,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
       {/* FINAL CTA */}
       <section className="home-final reveal">
         <h2 className="final-title pixel">¿LISTO PARA JUGAR?</h2>

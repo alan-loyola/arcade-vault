@@ -1,15 +1,13 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { GAMES } from "@/lib/games";
+import { formatPlays } from "@/lib/game-types";
+import { getGameIds, getGamesWithStats } from "@/lib/games";
 import { getTopScores } from "@/lib/scores";
-
 const DETAIL_LIMIT = 10;
-
 // Lee puntuaciones de la base de datos (dato de petición): va en <Suspense>.
 async function Leaderboard({ gameId }: { gameId: string }) {
   const scores = await getTopScores(gameId, DETAIL_LIMIT);
-
   if (scores.length === 0) {
     return (
       <div
@@ -26,7 +24,6 @@ async function Leaderboard({ gameId }: { gameId: string }) {
       </div>
     );
   }
-
   return scores.map((r, i) => (
     <div
       key={r.rank}
@@ -52,11 +49,9 @@ async function Leaderboard({ gameId }: { gameId: string }) {
     </div>
   ));
 }
-
-export function generateStaticParams() {
-  return GAMES.map((g) => ({ id: g.id }));
+export async function generateStaticParams() {
+  return getGameIds();
 }
-
 export default function GameDetailPage({ params }: PageProps<"/juegos/[id]">) {
   return (
     <Suspense fallback={null}>
@@ -64,7 +59,6 @@ export default function GameDetailPage({ params }: PageProps<"/juegos/[id]">) {
     </Suspense>
   );
 }
-
 // Lee params (dato de petición), así que va dentro de <Suspense>.
 async function GameDetail({
   params,
@@ -72,9 +66,8 @@ async function GameDetail({
   params: PageProps<"/juegos/[id]">["params"];
 }) {
   const { id } = await params;
-  const game = GAMES.find((g) => g.id === id);
+  const game = (await getGamesWithStats()).find((g) => g.id === id);
   if (!game) notFound();
-
   return (
     <div className="av-detail fade-in">
       <div>
@@ -93,7 +86,7 @@ async function GameDetail({
           <div className="stat-strip">
             <div>
               <div className="l">Partidas</div>
-              <div className="v">{game.plays}</div>
+              <div className="v">{formatPlays(game.plays)}</div>
             </div>
             <div>
               <div className="l">Mejor global</div>
@@ -130,7 +123,6 @@ async function GameDetail({
           </div>
         </div>
       </div>
-
       <aside>
         <div className="leaderboard">
           <h3>MEJORES PUNTUACIONES</h3>

@@ -1,15 +1,12 @@
 "use client";
-
 import { useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { Game } from "@/lib/games";
-
-export function GameCard({ game }: { game: Game }) {
+import { formatPlays, type GameWithStats } from "@/lib/game-types";
+export function GameCard({ game }: { game: GameWithStats }) {
   const router = useRouter();
   const tiltRef = useRef<HTMLDivElement>(null);
   const href = `/juegos/${game.id}`;
-
   const onMove = (e: React.MouseEvent<HTMLDivElement>) => {
     const el = tiltRef.current;
     if (!el) return;
@@ -23,10 +20,12 @@ export function GameCard({ game }: { game: Game }) {
     if (!el) return;
     el.style.transform = "";
   };
-
   const btnColor =
-    game.color === "magenta" ? "magenta" : game.color === "yellow" ? "yellow" : "";
-
+    game.color === "magenta"
+      ? "magenta"
+      : game.color === "yellow"
+        ? "yellow"
+        : "";
   return (
     <div
       ref={tiltRef}
@@ -43,9 +42,15 @@ export function GameCard({ game }: { game: Game }) {
         <div className="title">{game.title}</div>
         <div className="desc">{game.short}</div>
         <div className="row">
-          <div className="score-badge">
-            <span>MEJOR PUNTUACIÓN</span>
-            <b>{game.best.toLocaleString("es-ES")}</b>
+          <div className="score-badges">
+            <div className="score-badge">
+              <span>MEJOR PUNTUACIÓN</span>
+              <b>{game.best.toLocaleString("es-ES")}</b>
+            </div>
+            <div className="score-badge plays">
+              <span>PARTIDAS</span>
+              <b>{formatPlays(game.plays)}</b>
+            </div>
           </div>
           <Link
             href={href}

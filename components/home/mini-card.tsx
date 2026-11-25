@@ -1,7 +1,6 @@
 import Link from "next/link";
-import type { Game } from "@/lib/games";
-
-export function MiniCard({ game }: { game: Game }) {
+import { formatPlays, type GameWithStats } from "@/lib/game-types";
+export function MiniCard({ game }: { game: GameWithStats }) {
   return (
     <Link href={`/juegos/${game.id}`} className="mini-card">
       <div className="mini-cover">
@@ -10,6 +9,7 @@ export function MiniCard({ game }: { game: Game }) {
       <div className="mini-meta">
         <div className="mini-title">{game.title}</div>
         <div className="mini-cat">{game.cat}</div>
+        <div className="mini-cat">{formatPlays(game.plays)} PARTIDAS</div>
       </div>
     </Link>
   );
