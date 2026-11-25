@@ -12,10 +12,10 @@ import {
   TOP_PLAYERS,
 } from "@/lib/home";
 import { Suspense } from "react";
-import { getGames } from "@/lib/games";
+import { getGamesWithStats } from "@/lib/games";
 // Lee el catálogo de la BD (dato de petición): va dentro de <Suspense>.
 async function FeaturedGames() {
-  const games = await getGames();
+  const games = await getGamesWithStats();
   return (
     <div className="mini-rail">
       {games.slice(0, 6).map((g) => (

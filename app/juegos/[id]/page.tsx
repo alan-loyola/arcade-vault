@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { formatPlays } from "@/lib/game-types";
 import { getGameIds, getGamesWithStats } from "@/lib/games";
 import { getTopScores } from "@/lib/scores";
 const DETAIL_LIMIT = 10;
@@ -85,7 +86,7 @@ async function GameDetail({
           <div className="stat-strip">
             <div>
               <div className="l">Partidas</div>
-              <div className="v">{game.plays}</div>
+              <div className="v">{formatPlays(game.plays)}</div>
             </div>
             <div>
               <div className="l">Mejor global</div>

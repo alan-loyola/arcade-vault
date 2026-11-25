@@ -2,7 +2,7 @@
 import { useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { GameWithStats } from "@/lib/game-types";
+import { formatPlays, type GameWithStats } from "@/lib/game-types";
 export function GameCard({ game }: { game: GameWithStats }) {
   const router = useRouter();
   const tiltRef = useRef<HTMLDivElement>(null);
@@ -42,9 +42,15 @@ export function GameCard({ game }: { game: GameWithStats }) {
         <div className="title">{game.title}</div>
         <div className="desc">{game.short}</div>
         <div className="row">
-          <div className="score-badge">
-            <span>MEJOR PUNTUACIÓN</span>
-            <b>{game.best.toLocaleString("es-ES")}</b>
+          <div className="score-badges">
+            <div className="score-badge">
+              <span>MEJOR PUNTUACIÓN</span>
+              <b>{game.best.toLocaleString("es-ES")}</b>
+            </div>
+            <div className="score-badge plays">
+              <span>PARTIDAS</span>
+              <b>{formatPlays(game.plays)}</b>
+            </div>
           </div>
           <Link
             href={href}

@@ -15,6 +15,14 @@ export interface GameWithStats extends Game {
   best: number; // max(score), 0 si no hay partidas
   plays: number; // count(scores), 0 si no hay partidas
 }
+const compactFormatter = new Intl.NumberFormat("es-ES", {
+  notation: "compact",
+  maximumFractionDigits: 1,
+});
+// Número de partidas en formato compacto (es-ES).
+export function formatPlays(plays: number): string {
+  return compactFormatter.format(plays);
+}
 export const CATS: ["TODOS", ...Category[]] = [
   "TODOS",
   "ARCADE",
