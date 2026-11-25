@@ -6,6 +6,12 @@ export interface ScoreEntry {
   score: number;
   date: string; // "dd/mm/aaaa" (es-ES)
 }
+export interface GlobalRankEntry {
+  rank: number;
+  username: string;
+  total: number;
+  gamesPlayed: number;
+}
 export type AuthState =
   { status: "idle" } | { status: "error"; message: string };
 export type SaveScoreResult =
@@ -38,5 +44,31 @@ export async function getTopScores(
       month: "2-digit",
       year: "numeric",
     }),
+  }));
+}
+// Ranking global: por jugador, suma de su mejor score en cada juego (vista
+// global_ranking). Orden total determinista: total desc, juegos desc,
+// username asc. Lee datos de petición: llamar dentro de <Suspense>.
+export async function getGlobalRanking(
+  limit: number,
+): Promise<GlobalRankEntry[]> {
+  await connection();
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("global_ranking")
+    .select("username, total, games_played")
+    .order("total", { ascending: false })
+    .order("games_played", { ascending: false })
+    .order("username", { ascending: true })
+    .limit(limit);
+  if (error) {
+    console.error("getGlobalRanking:", error);
+    return [];
+  }
+  return data.map((row, i) => ({
+    rank: i + 1,
+    username: row.username ?? "???",
+    total: row.total ?? 0,
+    gamesPlayed: row.games_played ?? 0,
   }));
 }
