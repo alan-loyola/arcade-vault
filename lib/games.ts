@@ -83,6 +83,17 @@ export const GAMES: Game[] = [
     plays: "15.6K",
   },
   {
+    id: "asteroids",
+    title: "ASTEROIDES",
+    short: "Rota, acelera y dispara en gravedad cero.",
+    long: "Tu nave flota a la deriva en un campo de asteroides. Rota, impulsa y dispara para partir cada roca en fragmentos más pequeños. Recoge el power-up de disparo triple y limpia el sector para avanzar de nivel.",
+    cat: "SHOOTER",
+    cover: "cover-asteroids",
+    color: "magenta",
+    best: 36750,
+    plays: "8.3K",
+  },
+  {
     id: "ranaria",
     title: "RANARIA",
     short: "Cruza la autopista de pixeles.",
