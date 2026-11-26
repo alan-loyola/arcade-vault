@@ -20,6 +20,12 @@ import {
   INITIAL_LIVES as BLOQUE_BUSTER_LIVES,
   W as BLOQUE_BUSTER_W,
 } from "@/lib/games/bloque-buster/constants";
+import { createSerpentinaEngine } from "@/lib/games/serpentina/engine";
+import {
+  H as SERPENTINA_H,
+  INITIAL_LIVES as SERPENTINA_LIVES,
+  W as SERPENTINA_W,
+} from "@/lib/games/serpentina/constants";
 export interface RealGame {
   createEngine: CreateGameEngine;
   width: number; // resolución lógica del canvas
@@ -52,5 +58,13 @@ export const REAL_GAMES: Record<string, RealGame> = {
     controls: "RATÓN / ← → MOVER",
     initialLives: BLOQUE_BUSTER_LIVES,
     label: "Juego BLOQUE BUSTER",
+  },
+  serpentina: {
+    createEngine: createSerpentinaEngine,
+    width: SERPENTINA_W,
+    height: SERPENTINA_H,
+    controls: "← ↑ → ↓ / WASD MOVER",
+    initialLives: SERPENTINA_LIVES,
+    label: "Juego SERPENTINA",
   },
 };
