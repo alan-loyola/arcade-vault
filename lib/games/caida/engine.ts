@@ -3,23 +3,36 @@ import {
   clearLines,
   collide,
   createBoard,
+  ghostY,
   merge,
   randomPiece,
+  tryRotate,
   type Board,
   type Piece,
 } from "./board";
 import {
   DROP_STEP,
+  HARD_DROP_POINTS,
   INITIAL_DROP_INTERVAL,
   INITIAL_LIVES,
   LINE_SCORES,
   LINES_PER_LEVEL,
   MAX_DT,
   MIN_DROP_INTERVAL,
+  SOFT_DROP_POINTS,
 } from "./constants";
 import { drawBoard, drawPanel } from "./render";
 // Cumple el contrato común CreateGameEngine (lib/game-engine.ts).
 type State = "playing" | "gameover";
+// Únicas teclas que el motor intercepta
+const GAME_KEYS = new Set([
+  "ArrowLeft",
+  "ArrowRight",
+  "ArrowUp",
+  "KeyX",
+  "ArrowDown",
+  "Space",
+]);
 export const createCaidaEngine: CreateGameEngine = (canvas, callbacks) => {
   const ctx = canvas.getContext("2d");
   if (!ctx) {
@@ -44,6 +57,44 @@ export const createCaidaEngine: CreateGameEngine = (canvas, callbacks) => {
   let paused = false;
   let destroyed = false;
   let gameOverNotified = false;
+  // ── Entrada de teclado ──────────────────────────────────────────────────────
+  // Cada keydown (incluidas las repeticiones del sistema) encola una acción,
+  // como el original actuaba en cada keydown. La cola se consume al inicio
+  // del siguiente update, en orden, para que el estado solo cambie en el loop.
+  let actions: string[] = [];
+  function clearInput() {
+    actions = [];
+  }
+  function isTextField(target: EventTarget | null): boolean {
+    if (!(target instanceof HTMLElement)) return false;
+    return (
+      target instanceof HTMLInputElement ||
+      target instanceof HTMLTextAreaElement ||
+      target instanceof HTMLSelectElement ||
+      target.isContentEditable
+    );
+  }
+  // Solo se atiende (y se hace preventDefault) mientras la partida está
+  // activa: en pausa, con el modal abierto o tras el fin, las teclas
+  // recuperan su comportamiento normal.
+  function isListening(): boolean {
+    return started && !paused && !destroyed && state !== "gameover";
+  }
+  function onKeyDown(e: KeyboardEvent) {
+    if (!GAME_KEYS.has(e.code)) return;
+    if (!isListening()) return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (isTextField(e.target)) return;
+    e.preventDefault();
+    actions.push(e.code);
+  }
+  function onKeyUp(e: KeyboardEvent) {
+    if (!GAME_KEYS.has(e.code)) return;
+    if (!isListening()) return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (isTextField(e.target)) return;
+    e.preventDefault();
+  }
   // ── Notificación a React (solo cuando cambian los valores) ──────────────────
   let emitted = { score, level, lives };
   function emitStats() {
@@ -90,8 +141,66 @@ export const createCaidaEngine: CreateGameEngine = (canvas, callbacks) => {
     next = randomPiece();
     spawn();
   }
+  function move(dx: number) {
+    if (!collide(board, current.shape, current.x + dx, current.y)) {
+      current.x += dx;
+    }
+  }
+  function rotate() {
+    const rotated = tryRotate(board, current);
+    if (rotated) current = rotated;
+  }
+  function softDrop() {
+    if (!collide(board, current.shape, current.x, current.y + 1)) {
+      current.y++;
+      score += SOFT_DROP_POINTS;
+    } else {
+      lockPiece();
+    }
+  }
+  function hardDrop() {
+    const gy = ghostY(board, current);
+    score += (gy - current.y) * HARD_DROP_POINTS;
+    current.y = gy;
+    lockPiece();
+  }
+  // Lectura fuera del flujo de update: spawn() puede cambiar state a "gameover"
+  // dentro de applyAction y TypeScript no lo ve con el estrechamiento de tipos.
+  function isOver(): boolean {
+    return state === "gameover";
+  }
+  function applyAction(code: string) {
+    switch (code) {
+      case "ArrowLeft":
+        move(-1);
+        break;
+      case "ArrowRight":
+        move(1);
+        break;
+      case "ArrowUp":
+      case "KeyX":
+        rotate();
+        break;
+      case "ArrowDown":
+        softDrop();
+        break;
+      case "Space":
+        hardDrop();
+        break;
+    }
+  }
   function update(dt: number) {
     if (state === "gameover") return;
+    // Acciones de teclado encoladas, en orden
+    const queued = actions;
+    actions = [];
+    for (const code of queued) {
+      applyAction(code);
+      if (isOver()) {
+        clearInput();
+        return;
+      }
+    }
     // Caída automática
     dropAccum += dt * 1000;
     if (dropAccum >= dropInterval) {
@@ -129,6 +238,7 @@ export const createCaidaEngine: CreateGameEngine = (canvas, callbacks) => {
       if (!gameOverNotified) {
         gameOverNotified = true;
         stopLoop();
+        clearInput();
         callbacks.onGameOver({ score, level });
       }
       return;
@@ -144,6 +254,8 @@ export const createCaidaEngine: CreateGameEngine = (canvas, callbacks) => {
     start() {
       if (started || destroyed) return;
       started = true;
+      window.addEventListener("keydown", onKeyDown);
+      window.addEventListener("keyup", onKeyUp);
       initGame();
       draw();
       lastTime = null;
@@ -153,6 +265,7 @@ export const createCaidaEngine: CreateGameEngine = (canvas, callbacks) => {
       if (!started || destroyed || paused) return;
       paused = true;
       stopLoop();
+      clearInput(); // las teclas pulsadas antes de pausar no se aplican después
     },
     resume() {
       if (!started || destroyed || !paused) return;
@@ -162,7 +275,10 @@ export const createCaidaEngine: CreateGameEngine = (canvas, callbacks) => {
     },
     destroy() {
       destroyed = true;
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
       stopLoop();
+      clearInput();
     },
   };
 };
