@@ -14,6 +14,12 @@ import {
   INITIAL_LIVES as CAIDA_LIVES,
   W as CAIDA_W,
 } from "@/lib/games/caida/constants";
+import { createBloqueBusterEngine } from "@/lib/games/bloque-buster/engine";
+import {
+  H as BLOQUE_BUSTER_H,
+  INITIAL_LIVES as BLOQUE_BUSTER_LIVES,
+  W as BLOQUE_BUSTER_W,
+} from "@/lib/games/bloque-buster/constants";
 export interface RealGame {
   createEngine: CreateGameEngine;
   width: number; // resolución lógica del canvas
@@ -38,5 +44,13 @@ export const REAL_GAMES: Record<string, RealGame> = {
     controls: "← → MOVER · ↑ / X ROTAR · ↓ BAJAR · ESPACIO CAER",
     initialLives: CAIDA_LIVES,
     label: "Juego CAÍDA",
+  },
+  "bloque-buster": {
+    createEngine: createBloqueBusterEngine,
+    width: BLOQUE_BUSTER_W,
+    height: BLOQUE_BUSTER_H,
+    controls: "RATÓN / ← → MOVER",
+    initialLives: BLOQUE_BUSTER_LIVES,
+    label: "Juego BLOQUE BUSTER",
   },
 };
