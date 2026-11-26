@@ -1168,13 +1168,17 @@ a {
   box-shadow: 0 0 6px var(--green);
 }
 
-/* real canvas game (ASTEROIDES): la pantalla se ajusta al alto disponible y mantiene 4:3 */
+/* real canvas games (components/games/registry.ts): la pantalla se ajusta al alto
+   disponible y mantiene la proporción del canvas (--game-w / --game-h, inline) */
 .crt-screen--canvas {
-  width: min(100%, calc((100vh - 280px) * 4 / 3));
+  --game-w: 4;
+  --game-h: 3;
+  aspect-ratio: var(--game-w) / var(--game-h);
+  width: min(100%, calc((100vh - 280px) * var(--game-w) / var(--game-h)));
   min-width: 320px;
   margin: 0 auto;
 }
-.crt-screen--canvas > .asteroids-canvas {
+.crt-screen--canvas > .game-canvas {
   position: absolute;
   inset: 0;
   display: block;

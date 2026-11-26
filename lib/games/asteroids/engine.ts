@@ -18,16 +18,10 @@ import {
   type Keys,
 } from "./entities";
 import { dist, rand } from "./utils";
-export interface AsteroidsCallbacks {
-  onStats: (stats: { score: number; level: number; lives: number }) => void;
-  onGameOver: (result: { score: number; level: number }) => void;
-}
-export interface AsteroidsEngine {
-  start(): void; // arranca el loop (requestAnimationFrame)
-  pause(): void; // detiene la simulación y el dibujo del loop
-  resume(): void; // reanuda sin acumular el tiempo pausado
-  destroy(): void; // cancela el loop y quita todos los listeners
-}
+import type { GameCallbacks, GameEngine } from "@/lib/game-engine";
+// Cumple el contrato común CreateGameEngine (lib/game-engine.ts).
+export type AsteroidsCallbacks = GameCallbacks;
+export type AsteroidsEngine = GameEngine;
 type State = "playing" | "dead" | "gameover";
 // Únicas teclas que el motor intercepta
 const GAME_KEYS = new Set(["ArrowUp", "ArrowLeft", "ArrowRight", "Space"]);

@@ -1,23 +1,31 @@
 "use client";
 import { useEffect, useRef } from "react";
-import {
-  createAsteroidsEngine,
-  type AsteroidsCallbacks,
-  type AsteroidsEngine,
-} from "@/lib/games/asteroids/engine";
-import { H, W } from "@/lib/games/asteroids/constants";
-interface AsteroidsCanvasProps {
+import type {
+  CreateGameEngine,
+  GameCallbacks,
+  GameEngine,
+} from "@/lib/game-engine";
+interface GameCanvasProps {
+  createEngine: CreateGameEngine;
+  width: number; // resolución lógica fija; el escalado es por CSS
+  height: number;
+  label: string;
   paused: boolean;
-  onStats: AsteroidsCallbacks["onStats"];
-  onGameOver: AsteroidsCallbacks["onGameOver"];
+  onStats: GameCallbacks["onStats"];
+  onGameOver: GameCallbacks["onGameOver"];
 }
-export function AsteroidsCanvas({
+// Monta cualquier motor real que cumpla CreateGameEngine sobre un <canvas>.
+export function GameCanvas({
+  createEngine,
+  width,
+  height,
+  label,
   paused,
   onStats,
   onGameOver,
-}: AsteroidsCanvasProps) {
+}: GameCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const engineRef = useRef<AsteroidsEngine | null>(null);
+  const engineRef = useRef<GameEngine | null>(null);
   // Los callbacks se guardan en refs para que el motor no se recree si el
   // padre pasa funciones nuevas en cada render.
   const onStatsRef = useRef(onStats);
@@ -30,7 +38,7 @@ export function AsteroidsCanvas({
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const engine = createAsteroidsEngine(canvas, {
+    const engine = createEngine(canvas, {
       onStats: (stats) => onStatsRef.current(stats),
       onGameOver: (result) => onGameOverRef.current(result),
     });
@@ -40,7 +48,7 @@ export function AsteroidsCanvas({
       engine.destroy();
       engineRef.current = null;
     };
-  }, []);
+  }, [createEngine]);
   // Sincroniza la pausa de la plataforma con el motor
   useEffect(() => {
     const engine = engineRef.current;
@@ -51,10 +59,10 @@ export function AsteroidsCanvas({
   return (
     <canvas
       ref={canvasRef}
-      width={W}
-      height={H}
-      aria-label="Juego ASTEROIDES"
-      className="asteroids-canvas"
+      width={width}
+      height={height}
+      aria-label={label}
+      className="game-canvas"
     />
   );
 }
