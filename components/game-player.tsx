@@ -1,19 +1,20 @@
 "use client";
-
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState, useTransition, type CSSProperties } from "react";
 import Link from "next/link";
 import { saveScore } from "@/app/juegos/[id]/jugar/actions";
-import { AsteroidsCanvas } from "@/components/games/asteroids-canvas";
-
+import { GameCanvas } from "@/components/games/game-canvas";
+import { REAL_GAMES } from "@/components/games/registry";
 interface GamePlayerProps {
   gameId: string;
   title: string;
   username: string | null; // null = invitado (sin sesión)
 }
-
 export function GamePlayer({ gameId, title, username }: GamePlayerProps) {
+  const real = REAL_GAMES[gameId] ?? null; // null = simulador
+  const isReal = real !== null;
+  const initialLives = real?.initialLives ?? 3;
   const [{ score, level }, setStats] = useState({ score: 0, level: 1 });
-  const [lives, setLives] = useState(3);
+  const [lives, setLives] = useState(initialLives);
   const [paused, setPaused] = useState(false);
   const [over, setOver] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -22,19 +23,16 @@ export function GamePlayer({ gameId, title, username }: GamePlayerProps) {
   const [runKey, setRunKey] = useState(0); // cambia al reiniciar: remonta el motor
   const [hidden, setHidden] = useState(false); // pestaña oculta
   const name = username ?? "INVITADO";
-  const isAsteroids = gameId === "asteroids";
-
   // Pausa el motor real al ocultar la pestaña y lo reanuda al volver.
   useEffect(() => {
-    if (!isAsteroids) return;
+    if (!isReal) return;
     const onVisibility = () => setHidden(document.hidden);
     document.addEventListener("visibilitychange", onVisibility);
     return () => document.removeEventListener("visibilitychange", onVisibility);
-  }, [isAsteroids]);
-
+  }, [isReal]);
   // El puntaje inicia en 0 y solo sube tras montar (evita desajustes de hidratación).
   useEffect(() => {
-    if (isAsteroids || over || paused) return;
+    if (isReal || over || paused) return;
     const t = setInterval(() => {
       const inc = Math.floor(10 + Math.random() * 90);
       setStats(({ score: s, level: l }) => {
@@ -44,8 +42,7 @@ export function GamePlayer({ gameId, title, username }: GamePlayerProps) {
       });
     }, 220);
     return () => clearInterval(t);
-  }, [isAsteroids, over, paused]);
-
+  }, [isReal, over, paused]);
   const endGame = () => setOver(true);
   const handleGameOver = (result: { score: number; level: number }) => {
     setStats(result);
@@ -54,13 +51,12 @@ export function GamePlayer({ gameId, title, username }: GamePlayerProps) {
   const restart = () => {
     setRunKey((k) => k + 1);
     setStats({ score: 0, level: 1 });
-    setLives(3);
+    setLives(initialLives);
     setPaused(false);
     setOver(false);
     setSaved(false);
     setSaveError(false);
   };
-
   const handleSave = () => {
     setSaveError(false);
     startSaving(async () => {
@@ -69,7 +65,6 @@ export function GamePlayer({ gameId, title, username }: GamePlayerProps) {
       else setSaveError(true);
     });
   };
-
   return (
     <div className="av-player fade-in">
       <div className="player-hud">
@@ -109,16 +104,25 @@ export function GamePlayer({ gameId, title, username }: GamePlayerProps) {
           </Link>
         </div>
       </div>
-
       <div className="crt">
         <div
-          className={
-            isAsteroids ? "crt-screen crt-screen--canvas" : "crt-screen"
+          className={real ? "crt-screen crt-screen--canvas" : "crt-screen"}
+          style={
+            real
+              ? ({
+                  "--game-w": real.width,
+                  "--game-h": real.height,
+                } as CSSProperties)
+              : undefined
           }
         >
-          {isAsteroids ? (
-            <AsteroidsCanvas
+          {real ? (
+            <GameCanvas
               key={runKey}
+              createEngine={real.createEngine}
+              width={real.width}
+              height={real.height}
+              label={real.label}
               paused={paused || over || hidden}
               onStats={(stats) => {
                 setStats({ score: stats.score, level: stats.level });
@@ -165,13 +169,7 @@ export function GamePlayer({ gameId, title, username }: GamePlayerProps) {
           <span>CARGA · 1MB</span>
         </div>
       </div>
-
-      {isAsteroids && (
-        <p className="game-controls">
-          ← → ROTAR · ↑ IMPULSO · ESPACIO DISPARAR
-        </p>
-      )}
-
+      {real && <p className="game-controls">{real.controls}</p>}
       {over && (
         <div className="modal-bd">
           <div className="modal">

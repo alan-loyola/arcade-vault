@@ -20,3 +20,5 @@ Next 16.4.6 / React 19.3 — APIs differ from older training data. Per `AGENTS.m
 ## Skills
 
 Usa siempre /frontend-design para diseñar la interfaz de usuario.
+
+Usa `/new-game` para añadir un juego real (desde `references/started-games/` o desde una descripción): genera el spec `specs/NN-juego-<id>.md`; impleméntalo con `/spec-impl`. Los juegos reales se registran en `components/games/registry.ts` (contrato en `lib/game-engine.ts`); el resto del catálogo usa el simulador.
