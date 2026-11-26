@@ -48,6 +48,9 @@ interface Explosion extends Rect {
 }
 type State = "playing" | "gameover";
 const LAST_LEVEL = LEVELS.length; // 5
+// Únicas teclas que el motor intercepta (estado de tecla mantenida)
+const GAME_KEYS = new Set(["ArrowLeft", "ArrowRight"]);
+type GameKey = "ArrowLeft" | "ArrowRight";
 function collideAABB(a: Rect, b: Rect): boolean {
   return (
     a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y
@@ -83,8 +86,13 @@ export const createBloqueBusterEngine: CreateGameEngine = (
   let lives = INITIAL_LIVES;
   let level = 1;
   let state: State = "playing";
-  // Teclas mantenidas (las rellenan los listeners de entrada)
-  const keys = { ArrowLeft: false, ArrowRight: false };
+  // Teclas mantenidas
+  const keys: Record<GameKey, boolean> = {
+    ArrowLeft: false,
+    ArrowRight: false,
+  };
+  // Posición lógica pendiente del ratón (la aplica update) o null
+  let pointerX: number | null = null;
   let image: HTMLImageElement | null = null;
   let imageLoaded = false;
   // ── Control del loop ────────────────────────────────────────────────────────
@@ -97,6 +105,47 @@ export const createBloqueBusterEngine: CreateGameEngine = (
   function clearInput() {
     keys.ArrowLeft = false;
     keys.ArrowRight = false;
+    pointerX = null;
+  }
+  // ── Entrada de teclado y ratón ──────────────────────────────────────────────
+  function isTextField(target: EventTarget | null): boolean {
+    if (!(target instanceof HTMLElement)) return false;
+    return (
+      target instanceof HTMLInputElement ||
+      target instanceof HTMLTextAreaElement ||
+      target instanceof HTMLSelectElement ||
+      target.isContentEditable
+    );
+  }
+  // Solo se atiende (y se hace preventDefault) mientras la partida está
+  // activa: en pausa, con el modal abierto o tras el fin, las teclas
+  // recuperan su comportamiento normal y el ratón no mueve la paleta.
+  function isListening(): boolean {
+    return started && !paused && !destroyed && state !== "gameover";
+  }
+  function onKeyDown(e: KeyboardEvent) {
+    if (!GAME_KEYS.has(e.code)) return;
+    if (!isListening()) return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (isTextField(e.target)) return;
+    e.preventDefault();
+    keys[e.code as GameKey] = true;
+  }
+  function onKeyUp(e: KeyboardEvent) {
+    if (!GAME_KEYS.has(e.code)) return;
+    // Soltar siempre libera la tecla, aunque la partida no esté activa
+    keys[e.code as GameKey] = false;
+    if (!isListening()) return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (isTextField(e.target)) return;
+    e.preventDefault();
+  }
+  // El canvas está escalado por CSS: se convierte a coordenadas lógicas.
+  function onMouseMove(e: MouseEvent) {
+    if (!isListening()) return;
+    const r = canvas.getBoundingClientRect();
+    if (r.width === 0) return;
+    pointerX = (e.clientX - r.left) * (W / r.width);
   }
   // ── Notificación a React (solo cuando cambian los valores) ──────────────────
   let emitted = { score, level, lives };
@@ -133,6 +182,11 @@ export const createBloqueBusterEngine: CreateGameEngine = (
     resetBall();
   }
   function movePaddle(dt: number) {
+    // Ratón pendiente: centra la paleta en el cursor y se consume
+    if (pointerX !== null) {
+      paddle.x = Math.max(0, Math.min(W - paddle.w, pointerX - paddle.w / 2));
+      pointerX = null;
+    }
     if (keys.ArrowLeft) paddle.x = Math.max(0, paddle.x - PADDLE_SPEED * dt);
     if (keys.ArrowRight)
       paddle.x = Math.min(W - paddle.w, paddle.x + PADDLE_SPEED * dt);
@@ -297,6 +351,9 @@ export const createBloqueBusterEngine: CreateGameEngine = (
     start() {
       if (started || destroyed) return;
       started = true;
+      window.addEventListener("keydown", onKeyDown);
+      window.addEventListener("keyup", onKeyUp);
+      canvas.addEventListener("mousemove", onMouseMove);
       loadImage();
       draw();
       lastTime = null;
@@ -316,6 +373,9 @@ export const createBloqueBusterEngine: CreateGameEngine = (
     },
     destroy() {
       destroyed = true;
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
+      canvas.removeEventListener("mousemove", onMouseMove);
       if (image) {
         image.onload = null;
         image.onerror = null;
