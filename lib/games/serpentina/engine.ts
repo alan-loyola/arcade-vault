@@ -17,6 +17,7 @@ import {
 } from "./constants";
 import { drawBoard, drawBonus, drawFruitCell, drawSnake } from "./render";
 import {
+  enqueueDir,
   freeCells,
   hitsBody,
   initialSnake,
@@ -29,6 +30,26 @@ import {
 type State = "playing" | "gameover";
 const FRUIT_KINDS: readonly FruitKind[] = ["apple", "cherry", "grape", "lemon"];
 const BOARD_CELLS = COLS * ROWS; // 400: llenarlo es la victoria
+// Únicas teclas que el motor intercepta, con la dirección a la que giran
+const GAME_KEYS: ReadonlyMap<string, Dir> = new Map<string, Dir>([
+  ["ArrowUp", "up"],
+  ["KeyW", "up"],
+  ["ArrowDown", "down"],
+  ["KeyS", "down"],
+  ["ArrowLeft", "left"],
+  ["KeyA", "left"],
+  ["ArrowRight", "right"],
+  ["KeyD", "right"],
+]);
+function isTextField(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  return (
+    target instanceof HTMLInputElement ||
+    target instanceof HTMLTextAreaElement ||
+    target instanceof HTMLSelectElement ||
+    target.isContentEditable
+  );
+}
 function sameCell(a: Cell | null, b: Cell): boolean {
   return a !== null && a.x === b.x && a.y === b.y;
 }
@@ -57,8 +78,33 @@ export const createSerpentinaEngine: CreateGameEngine = (canvas, callbacks) => {
   let paused = false;
   let destroyed = false;
   let gameOverNotified = false;
+  // ── Entrada de teclado ──────────────────────────────────────────────────────
+  // Cada keydown pasa por la cola de giros (máx. 2), validada contra el último
+  // giro encolado; step() consume uno por paso.
   function clearInput() {
     dirQueue = [];
+  }
+  // Solo se atiende (y se hace preventDefault) mientras la partida está
+  // activa: en pausa, con el modal abierto o tras el fin, las teclas
+  // recuperan su comportamiento normal.
+  function isListening(): boolean {
+    return started && !paused && !destroyed && state !== "gameover";
+  }
+  function onKeyDown(e: KeyboardEvent) {
+    const next = GAME_KEYS.get(e.code);
+    if (!next) return;
+    if (!isListening()) return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (isTextField(e.target)) return;
+    e.preventDefault();
+    dirQueue = enqueueDir(dirQueue, dir, next);
+  }
+  function onKeyUp(e: KeyboardEvent) {
+    if (!GAME_KEYS.has(e.code)) return;
+    if (!isListening()) return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (isTextField(e.target)) return;
+    e.preventDefault();
   }
   // ── Notificación a React (solo cuando cambian los valores) ──────────────────
   let emitted = { score, level, lives };
@@ -205,6 +251,8 @@ export const createSerpentinaEngine: CreateGameEngine = (canvas, callbacks) => {
     start() {
       if (started || destroyed) return;
       started = true;
+      window.addEventListener("keydown", onKeyDown);
+      window.addEventListener("keyup", onKeyUp);
       initGame();
       draw();
       lastTime = null;
@@ -224,6 +272,8 @@ export const createSerpentinaEngine: CreateGameEngine = (canvas, callbacks) => {
     },
     destroy() {
       destroyed = true;
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
       stopLoop();
       clearInput();
     },
