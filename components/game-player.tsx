@@ -4,6 +4,8 @@ import Link from "next/link";
 import { saveScore } from "@/app/juegos/[id]/jugar/actions";
 import { GameCanvas } from "@/components/games/game-canvas";
 import { REAL_GAMES } from "@/components/games/registry";
+import { TouchControls } from "@/components/games/touch-controls";
+import { useCoarsePointer } from "@/components/games/use-coarse-pointer";
 import { useGameSkin } from "@/components/games/use-game-skin";
 import { SKIN_IDS, SKIN_LABELS } from "@/lib/skins";
 interface GamePlayerProps {
@@ -28,6 +30,10 @@ export function GamePlayer({ gameId, title, username }: GamePlayerProps) {
   // DEFAULT_SKIN en el servidor y en la hidratación; luego el skin guardado
   // del juego. Cambiarlo no pausa, no reinicia y no toca runKey.
   const [skin, chooseSkin] = useGameSkin(gameId, hasSkins);
+  // Mando virtual: solo juegos reales con `touch` y puntero grueso (false en
+  // el servidor y en la hidratación, así que el primer render es el de escritorio).
+  const coarsePointer = useCoarsePointer();
+  const touchButtons = coarsePointer ? (real?.touch ?? null) : null;
   const name = username ?? "INVITADO";
   // Pausa el motor real al ocultar la pestaña y lo reanuda al volver.
   useEffect(() => {
@@ -204,7 +210,14 @@ export function GamePlayer({ gameId, title, username }: GamePlayerProps) {
           <span>CARGA · 1MB</span>
         </div>
       </div>
-      {real && <p className="game-controls">{real.controls}</p>}
+      {touchButtons ? (
+        <TouchControls
+          buttons={touchButtons}
+          disabled={paused || over || hidden}
+        />
+      ) : (
+        real && <p className="game-controls">{real.controls}</p>
+      )}
       {over && (
         <div className="modal-bd">
           <div className="modal">
