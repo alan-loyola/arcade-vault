@@ -4,6 +4,8 @@ import Link from "next/link";
 import { saveScore } from "@/app/juegos/[id]/jugar/actions";
 import { GameCanvas } from "@/components/games/game-canvas";
 import { REAL_GAMES } from "@/components/games/registry";
+import { useGameSkin } from "@/components/games/use-game-skin";
+import { SKIN_IDS, SKIN_LABELS } from "@/lib/skins";
 interface GamePlayerProps {
   gameId: string;
   title: string;
@@ -22,6 +24,10 @@ export function GamePlayer({ gameId, title, username }: GamePlayerProps) {
   const [saving, startSaving] = useTransition();
   const [runKey, setRunKey] = useState(0); // cambia al reiniciar: remonta el motor
   const [hidden, setHidden] = useState(false); // pestaña oculta
+  const hasSkins = real?.skins === true; // selector solo en juegos con skins
+  // DEFAULT_SKIN en el servidor y en la hidratación; luego el skin guardado
+  // del juego. Cambiarlo no pausa, no reinicia y no toca runKey.
+  const [skin, chooseSkin] = useGameSkin(gameId, hasSkins);
   const name = username ?? "INVITADO";
   // Pausa el motor real al ocultar la pestaña y lo reanuda al volver.
   useEffect(() => {
@@ -88,7 +94,35 @@ export function GamePlayer({ gameId, title, username }: GamePlayerProps) {
             <div className="v">{String(level).padStart(2, "0")}</div>
           </div>
         </div>
-        <div className="hud-actions">
+        <div
+          className={
+            hasSkins ? "hud-actions hud-actions--skins" : "hud-actions"
+          }
+        >
+          {hasSkins && (
+            <div
+              className="skin-switch"
+              role="group"
+              aria-label="Skin del juego"
+            >
+              <span className="skin-switch-label" aria-hidden="true">
+                SKIN
+              </span>
+              {SKIN_IDS.map((id) => (
+                <button
+                  key={id}
+                  type="button"
+                  className="skin-opt"
+                  data-skin={id}
+                  aria-pressed={skin === id}
+                  onClick={() => chooseSkin(id)}
+                >
+                  <span className="skin-swatch" aria-hidden="true" />
+                  {SKIN_LABELS[id]}
+                </button>
+              ))}
+            </div>
+          )}
           <button
             type="button"
             className="btn yellow"
@@ -124,6 +158,7 @@ export function GamePlayer({ gameId, title, username }: GamePlayerProps) {
               height={real.height}
               label={real.label}
               paused={paused || over || hidden}
+              skin={skin}
               onStats={(stats) => {
                 setStats({ score: stats.score, level: stats.level });
                 setLives(stats.lives);

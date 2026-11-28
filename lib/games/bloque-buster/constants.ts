@@ -3,7 +3,6 @@
 // --- Valores del original, sin cambios ---
 export const W = 800;
 export const H = 600;
-export const BG_COLOR = "#000";
 // Paleta
 export const PADDLE_SPEED = 400; // px/s
 export const PADDLE_Y = 560;

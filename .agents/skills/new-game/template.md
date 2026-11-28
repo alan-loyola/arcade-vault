@@ -71,6 +71,7 @@ No introduce tablas ni cambios de esquema: reutiliza `games`, `scores`, `game_st
   controls: "<TEXTO DE CONTROLES>",
   initialLives: <n>,
   label: "Juego <TÍTULO>",
+  skins: true, // CLÁSICO · NEÓN · RETRO (sección Skins)
 },
 ```
 
@@ -81,7 +82,18 @@ Convenciones:
 - `onStats` solo cuando cambian `score`, `level` o `lives`; `onGameOver` una sola vez por partida.
 - Estado inicial: `score = 0`, `level = 1`, `lives = <n>`, igual que el HUD.
 - `score` = <regla exacta>; `level` = <regla exacta>; `lives` = <regla exacta o "constante 1: el juego no tiene vidas">.
-- Colores del canvas: los del original.
+- Colores del canvas: los del original, como skin `clasico` en `lib/games/<id>/skins.ts`.
+
+---
+
+## Skins
+
+Contrato en `integration.md` §9 (infraestructura en `lib/skins.ts`, `GameCanvas` y `GamePlayer`, sin cambios por juego).
+
+- `lib/games/<id>/skins.ts`: `interface <Id>Palette` (<roles: fondo, cada entidad, texto, decorativos, `glow`, grosores de línea>) y `SKINS: SkinSet<<Id>Palette>` con `clasico` (colores originales exactos, por defecto), `neon` (fondo casi negro, tonos saturados, glow 6–14 solo en entidades) y `retro` (<ámbar | verde fósforo | CGA>, 4–6 tonos, sin glow). Ningún color literal fuera de este archivo.
+- El motor crea `let palette = resolveSkin(SKINS, options?.skin)` en el cierre, la pasa a cada función de dibujo e implementa `setSkin` (cambia solo la paleta y redibuja un frame si el loop está parado).
+- Reglas de modo oscuro (bloqueantes, con `contrastRatio`): fondo con luminancia ≤ 0.05 y no más claro que `#050507`; entidades ≥ 3:1; texto en canvas ≥ 4.5:1; decorativos 1.1–2:1; sin hex repetidos entre tipos de pieza/enemigo; nada claro a pantalla completa.
+- Fila del juego en `references/game-with-themes.md`.
 
 ---
 
@@ -92,7 +104,7 @@ Antes del paso 1: leer `.claude/skills/new-game/integration.md`, `lib/game-engin
 1. Aplicar la migración del catálogo con `apply_migration` y guardar el SQL en `supabase/migrations/`. [NUEVO] Añadir `.cover-<id>` a `app/globals.css`. Verificación: `execute_sql` muestra la fila; `/juegos` y `/juegos/<id>` muestran la card y el detalle; `/juegos/<id>/jugar` abre con el simulador; `/salon` muestra la pestaña vacía.
 2. Crear `lib/games/<id>/constants.ts` (y `utils.ts` si aplica) con los valores del original. Verificación: `npx tsc --noEmit`.
 3. Portar las entidades a `lib/games/<id>/<archivos>` con contexto 2D y estado de entrada inyectados. [ASSETS] Copiar los assets a `public/games/<id>/`. Verificación: tipos y `npx eslint lib`.
-4. Crear `lib/games/<id>/engine.ts` con `create<Nombre>Engine: CreateGameEngine`: estado en cierre, `update`/`draw`, loop con `requestAnimationFrame`, `pause`/`resume` sin acumular `dt`, `onStats`, `onGameOver`, `destroy`, sin HUD ni overlays. Verificación: tipos y lint.
+4. Crear `lib/games/<id>/engine.ts` con `create<Nombre>Engine: CreateGameEngine`: estado en cierre, `update`/`draw`, loop con `requestAnimationFrame`, `pause`/`resume` sin acumular `dt`, `onStats`, `onGameOver`, `destroy`, sin HUD ni overlays. Los colores salen de `lib/games/<id>/skins.ts` (`clasico`, `neon`, `retro`) y el motor implementa `setSkin` (sección Skins). Verificación: tipos, lint y `grep` de colores fuera de `skins.ts` sin resultados.
 5. Entrada <de teclado | de teclado y ratón> en el motor según `integration.md`, registrada en `start()` y quitada en `destroy()`. Verificación: tipos y lint.
 6. Registrar el juego en `REAL_GAMES`. Verificación: `npm run dev`, jugar `/juegos/<id>/jugar`: <acción básica visible> y el HUD cambia.
 7. Verificar el guardado: con sesión, terminar una partida y guardar crea una fila en `scores` con `game_id = "<id>"` y el `score`/`level` reales; sin sesión se ve "INICIA SESIÓN PARA GUARDAR". La puntuación aparece en `/salon` (pestaña y GLOBAL) y `best`/`plays` cambian en `/juegos/<id>`. Verificación: `execute_sql` de lectura sobre `scores`.
@@ -118,6 +130,8 @@ Plataforma:
 - [ ] Con sesión, "GUARDAR PUNTUACIÓN" inserta una fila en `scores` con `game_id = "<id>"`, `score` y `level` de la partida; sin sesión no inserta nada.
 - [ ] La puntuación aparece en `/salon` (pestaña <TÍTULO> y GLOBAL) y `best`/`plays` de `/juegos/<id>` se actualizan tras recargar.
 - [ ] ASTEROIDES y los juegos simulados se comportan igual que antes.
+- [ ] El selector CLÁSICO · NEÓN · RETRO cambia la paleta sin reiniciar la partida (puntuación, nivel y vidas se mantienen), funciona en PAUSA y el skin elegido persiste al recargar; CLÁSICO se ve igual que el original.
+- [ ] Los 3 skins cumplen las reglas de modo oscuro y la fila `<id>` de `references/game-with-themes.md` está en ✅.
 
 Juego (uno por mecánica del original):
 

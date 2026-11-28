@@ -37,10 +37,15 @@ export interface GameEngine {
   pause(): void;
   resume(): void;
   destroy(): void;
+  setSkin?(skin: SkinId): void; // optional: only games with skins (section 9)
+}
+export interface GameOptions {
+  skin: SkinId; // from lib/skins.ts
 }
 export type CreateGameEngine = (
   canvas: HTMLCanvasElement,
   callbacks: GameCallbacks,
+  options?: GameOptions, // optional: without it the engine uses DEFAULT_SKIN
 ) => GameEngine;
 ```
 
@@ -56,6 +61,7 @@ export interface RealGame {
   controls: string; // help line under the CRT, e.g. "← → MOVER · ↑ ROTAR · ESPACIO CAER"
   initialLives: number; // must equal the engine's initial lives
   label: string; // canvas aria-label, e.g. "Juego CAÍDA"
+  skins?: true; // only when lib/games/<id>/skins.ts has the 3 skins (section 9)
 }
 ```
 
@@ -81,7 +87,7 @@ Engine rules:
 7. **`onGameOver`** is emitted exactly once; the loop stops and input is ignored afterwards. A "victory" (last level cleared) also ends with `onGameOver`.
 8. **Remove from the original:** HUD drawn on canvas, pause overlay and pause keys, game-over/victory overlays, restart-on-key, level selectors, debug keys. Keep everything else (physics, scoring, difficulty, colors) identical.
 9. **Initial state** before the first frame: `score = 0`, `level = 1`, `lives = initialLives`, matching the HUD's server render (avoids hydration mismatches). `Math.random()` and `performance.now()` only run inside the engine (client, in `useEffect`).
-10. **Colors:** keep the original's colors in the canvas. Only the frame and the HUD use the platform style.
+10. **Colors:** keep the original's colors in the canvas. Only the frame and the HUD use the platform style. Every canvas color lives in `lib/games/<id>/skins.ts` as the `clasico` palette (section 9); no hex/rgb/hsl literals in the other files of the game.
 
 Keyboard rules:
 
@@ -131,6 +137,8 @@ Replacing a simulated game — `update public.games set ... where id = '<id>'` o
 | `lib/games/<id>/*`                           | new engine                          |
 | `components/games/registry.ts`               | one new `REAL_GAMES` entry          |
 | `public/games/<id>/*`                        | assets, only if the game has images |
+| `lib/games/<id>/skins.ts`                    | palettes per skin (section 9)       |
+| `references/game-with-themes.md`             | the game's row (section 9)          |
 
 `components/game-player.tsx`, `components/games/game-canvas.tsx`, `lib/game-engine.ts`, `lib/games.ts`, `lib/scores.ts` and `saveScore` are **not** modified. If a game seems to need a change there, it is a platform change: call it out in the spec's decisions and keep it backwards compatible with Asteroids.
 
@@ -142,3 +150,23 @@ Replacing a simulated game — `update public.games set ... where id = '<id>'` o
 - Play `/juegos/<id>/jugar`: HUD updates, PAUSA freezes, hidden tab pauses without a `dt` jump, FIN and real game over open the modal, JUGAR DE NUEVO resets to `0 / 1 / initialLives`, arrows and space do not scroll the page, leaving and re-entering does not duplicate speed or input.
 - `/salon` shows the game's tab and the score; the global ranking includes it; `/juegos/<id>` shows real `best` / `plays`.
 - `/juegos/asteroids/jugar` still works and other simulated games are unchanged.
+- If the game has skins: `grep -rnE "#[0-9a-fA-F]{3,8}\b|rgba?\(|hsla?\(" lib/games/<id>/ --exclude=skins.ts` → no results; switching skin keeps score/level/lives and works while paused; the choice survives a reload.
+
+## 9. Skins (CLÁSICO · NEÓN · RETRO)
+
+Platform pieces (already built, do not modify per game): `lib/skins.ts`, the optional `options`/`setSkin` of the engine contract, the `skin` prop of `GameCanvas`, and the selector in `GamePlayer` (`components/games/use-game-skin.ts`, persisted in `localStorage` under `arcade-vault:skin:<gameId>`, shown only when the registry entry has `skins: true`). The `skin-designer` subagent (`.claude/agents/skin-designer.md`) applies skins to existing games; a new game can ship them from the start.
+
+`lib/skins.ts` exports `SkinId = "clasico" | "neon" | "retro"`, `SKIN_IDS`, `DEFAULT_SKIN = "clasico"`, `SKIN_LABELS`, `isSkinId`, `SkinSet<P> = Record<SkinId, P>`, `resolveSkin(skins, skin?)`, `skinStorageKey(gameId)`, `relativeLuminance(hex)` and `contrastRatio(a, b)`.
+
+Per game:
+
+1. `lib/games/<id>/skins.ts` — `export interface <Id>Palette { … }` (one field per drawable role: `background`, each entity, text, decoratives, plus `glow: number` and line widths if the game strokes) and `export const SKINS: SkinSet<<Id>Palette>` with the 3 keys. It is the **only** file of the game with color literals.
+   - `clasico`: the original colors, exact. It is the default; choosing it changes nothing.
+   - `neon`: near-black background (not lighter than the CRT frame `#050507`, e.g. `#04040a`), saturated entities (cyan, magenta, lime, electric yellow), `shadowBlur` 6–14 with a same-tone `shadowColor` **only on entities**, reset to 0 (or `restore()`) after drawing them.
+   - `retro`: one phosphor family (amber `#ffb000`, green `#33ff66`) or a 4-color CGA palette, 4–6 tones, no glow, distinct elements separated by luminance.
+2. Engine: `let palette = resolveSkin(SKINS, options?.skin);` inside the closure. Pass `palette` as a parameter to every draw function/method (`entity.draw(ctx, palette)`, `drawBoard(ctx, state, palette)`); no module-level state.
+3. Engine: return `setSkin(skin) { if (!isSkinId(skin) || destroyed) return; palette = SKINS[skin]; if (started && rafId === null) draw(lastTs); }` — never touches game state, timers or `runKey`; redraws one frame when the loop is stopped (paused or game over).
+4. Registry: add `skins: true` to the `REAL_GAMES` entry.
+5. Skins only change colors, glow and line width — never collision sizes, speeds, scoring or rules.
+6. Dark-mode rules (blocking, check with `contrastRatio` in a throwaway script): background luminance ≤ 0.05 and not lighter than `#050507`; playable entities ≥ 3:1 vs background; in-canvas text ≥ 4.5:1; decoratives (grid, separators, particles) 1.1–2:1; no repeated hex among piece/enemy types and ≥ 1.5:1 or clearly different hue between things the player must tell apart; no large fill with luminance > 0.4.
+7. Add/update the game's row in `references/game-with-themes.md` (✅ / ⚠️ / ❌ per skin, date, RETRO family, min contrast).

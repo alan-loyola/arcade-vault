@@ -33,6 +33,9 @@ export interface RealGame {
   controls: string; // ayuda bajo el marco CRT
   initialLives: number; // estado inicial del HUD (igual al del motor)
   label: string; // aria-label del canvas
+  // Solo si lib/games/<id>/skins.ts tiene los 3 skins y el motor implementa
+  // setSkin: GamePlayer muestra el selector CLÁSICO · NEÓN · RETRO.
+  skins?: true;
 }
 export const REAL_GAMES: Record<string, RealGame> = {
   asteroids: {
@@ -42,6 +45,7 @@ export const REAL_GAMES: Record<string, RealGame> = {
     controls: "← → ROTAR · ↑ IMPULSO · ESPACIO DISPARAR",
     initialLives: ASTEROIDS_LIVES,
     label: "Juego ASTEROIDES",
+    skins: true,
   },
   caida: {
     createEngine: createCaidaEngine,
@@ -58,6 +62,7 @@ export const REAL_GAMES: Record<string, RealGame> = {
     controls: "RATÓN / ← → MOVER",
     initialLives: BLOQUE_BUSTER_LIVES,
     label: "Juego BLOQUE BUSTER",
+    skins: true,
   },
   serpentina: {
     createEngine: createSerpentinaEngine,
@@ -66,5 +71,6 @@ export const REAL_GAMES: Record<string, RealGame> = {
     controls: "← ↑ → ↓ / WASD MOVER",
     initialLives: SERPENTINA_LIVES,
     label: "Juego SERPENTINA",
+    skins: true,
   },
 };
