@@ -1072,6 +1072,11 @@ a {
   color: var(--yellow);
   text-shadow: 0 0 6px rgba(245, 255, 0, 0.5);
 }
+.hud-stats {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
 .hud-actions {
   display: flex;
   gap: 10px;
@@ -1783,6 +1788,242 @@ a {
   }
   .av-player {
     padding: 0 16px 32px;
+  }
+}
+
+/* ===== mando virtual (components/games/touch-controls.tsx) =====
+   Teclas de recreativa con el chaflán de .btn: cian las de dirección (glifo),
+   magenta las de acción (palabra). Pulsada = rellena de su neón. */
+.touch-pad {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+/* una sola zona con botones (SERPENTINA): la cruceta va al centro */
+.touch-pad:has(> .touch-zone:empty) {
+  justify-content: center;
+}
+.touch-zone {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+.touch-zone:empty {
+  display: none;
+}
+.touch-zone--right {
+  flex-direction: column;
+  align-items: stretch;
+}
+.touch-btn {
+  --tc: var(--cyan);
+  --tc-rgb: 0, 245, 255;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 60px;
+  height: 60px;
+  min-width: 56px;
+  min-height: 56px;
+  padding: 0;
+  /* la fuente pixel no tiene ← →: todas las flechas en mono, iguales */
+  font-family: var(--mono);
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--tc);
+  text-shadow: 0 0 6px rgba(var(--tc-rgb), 0.6);
+  background: rgba(var(--tc-rgb), 0.07);
+  border: 1px solid var(--tc);
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    transform 60ms ease,
+    background-color 60ms,
+    color 60ms;
+  clip-path: polygon(
+    8px 0,
+    100% 0,
+    100% calc(100% - 8px),
+    calc(100% - 8px) 100%,
+    0 100%,
+    0 8px
+  );
+}
+.touch-btn::before {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border: 1px solid rgba(var(--tc-rgb), 0.25);
+  pointer-events: none;
+  clip-path: inherit;
+}
+.touch-btn[data-kind="word"] {
+  --tc: var(--magenta);
+  --tc-rgb: 255, 0, 110;
+  width: auto;
+  min-width: 112px;
+  height: 56px;
+  padding: 0 14px;
+  font-family: var(--pixel);
+  font-weight: 400;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+}
+/* BLOQUE BUSTER: una flecha por zona, tecla más ancha para el pulgar */
+.touch-btn[data-kind="glyph"]:only-child {
+  width: 104px;
+  height: 72px;
+}
+.touch-btn[data-pressed] {
+  color: var(--bg);
+  text-shadow: none;
+  background: var(--tc);
+  transform: translateY(2px);
+}
+.touch-btn[data-pressed]::before {
+  border-color: rgba(10, 10, 15, 0.35);
+}
+.touch-btn:focus-visible {
+  outline: 2px solid var(--yellow);
+  outline-offset: -6px;
+}
+.touch-pad[data-disabled] .touch-btn {
+  opacity: 0.35;
+}
+/* cruceta: 3×3 con un buje central */
+.touch-zone--dpad {
+  display: grid;
+  grid-template-columns: repeat(3, 56px);
+  grid-template-rows: repeat(3, 56px);
+  gap: 4px;
+}
+.touch-zone--dpad::before {
+  content: "";
+  grid-area: 2 / 2;
+  place-self: center;
+  width: 14px;
+  height: 14px;
+  border: 1px solid rgba(0, 245, 255, 0.45);
+  background: rgba(0, 245, 255, 0.12);
+  transform: rotate(45deg);
+}
+.touch-zone--dpad .touch-btn {
+  width: 56px;
+  height: 56px;
+}
+.touch-zone--dpad .touch-btn[data-code="ArrowUp"] {
+  grid-area: 1 / 2;
+}
+.touch-zone--dpad .touch-btn[data-code="ArrowLeft"] {
+  grid-area: 2 / 1;
+}
+.touch-zone--dpad .touch-btn[data-code="ArrowRight"] {
+  grid-area: 2 / 3;
+}
+.touch-zone--dpad .touch-btn[data-code="ArrowDown"] {
+  grid-area: 3 / 2;
+}
+@media (prefers-reduced-motion: reduce) {
+  .touch-btn {
+    transition: none;
+  }
+  .touch-btn[data-pressed] {
+    transform: none;
+  }
+}
+
+/* ===== reproductor en vertical con puntero grueso =====
+   HUD compacto, CRT fino y canvas a lo ancho; su alto se limita con svh para
+   que barra (80px) + HUD + CRT + mando quepan sin scroll (390×844). */
+@media (pointer: coarse) {
+  .av-player {
+    --touch-pad-h: 120px; /* dos teclas de acción apiladas */
+    --touch-reserve: calc(
+      80px + 8px + 128px + 8px + 16px + 12px + var(--touch-pad-h) + 12px
+    );
+    margin: 8px auto 0;
+    padding: 0 12px 12px;
+  }
+  .av-player:has(.touch-zone--dpad) {
+    --touch-pad-h: 176px;
+  }
+  .player-hud {
+    gap: 8px;
+    padding: 8px 10px;
+    margin-bottom: 8px;
+  }
+  .hud-stats {
+    flex-wrap: nowrap;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+  }
+  .hud-stat {
+    gap: 3px;
+    min-width: 0;
+  }
+  .hud-stat .l {
+    font-size: 8px;
+  }
+  .hud-stat .v {
+    font-size: 11px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .hud-actions {
+    width: 100%;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .hud-actions .btn {
+    flex: 1;
+    min-height: 36px;
+    padding: 8px 6px;
+    font-size: 8px;
+  }
+  .skin-switch {
+    width: 100%;
+  }
+  .skin-switch-label {
+    display: none;
+  }
+  .skin-opt {
+    flex: 1;
+    justify-content: center;
+    min-height: 34px;
+    padding: 0 6px;
+  }
+  .crt {
+    padding: 8px;
+    border-radius: 16px;
+    box-shadow:
+      0 0 0 3px #1b1b22,
+      0 0 0 4px #2a2a35,
+      0 14px 40px -18px rgba(0, 245, 255, 0.35);
+  }
+  .crt-bottom {
+    display: none;
+  }
+  .crt-screen--canvas {
+    min-width: 0;
+    width: min(
+      100%,
+      calc((100svh - var(--touch-reserve)) * var(--game-w) / var(--game-h))
+    );
   }
 }
 

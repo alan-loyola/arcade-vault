@@ -62,10 +62,19 @@ export interface RealGame {
   initialLives: number; // must equal the engine's initial lives
   label: string; // canvas aria-label, e.g. "Juego CAÍDA"
   skins?: true; // only when lib/games/<id>/skins.ts has the 3 skins (section 9)
+  touch?: TouchButton[]; // on-screen gamepad for touch devices (section 10)
+}
+export type TouchZone = "left" | "right";
+export interface TouchButton {
+  code: string; // e.code sent; must be in the engine's GAME_KEYS
+  label: string; // visible text or glyph ("←", "DISPARO")
+  aria: string; // Spanish aria-label ("Girar a la izquierda")
+  zone: TouchZone; // left thumb or right thumb
+  repeat?: true; // re-sends keydown while held (only for keys the engine reads once per keydown)
 }
 ```
 
-`GamePlayer` already handles, for every registered game: HUD (player, score, lives, level), PAUSA/REANUDAR, FIN, SALIR, the game-over modal, saving, "JUGAR DE NUEVO" (remounts the engine through `key`), pause while the modal is open, pause on hidden tab (`visibilitychange`), the CRT frame scaled to the canvas aspect ratio (`--game-w` / `--game-h`), and the controls help line. **None of that is reimplemented per game.**
+`GamePlayer` already handles, for every registered game: HUD (player, score, lives, level), PAUSA/REANUDAR, FIN, SALIR, the game-over modal, saving, "JUGAR DE NUEVO" (remounts the engine through `key`), pause while the modal is open, pause on hidden tab (`visibilitychange`), the CRT frame scaled to the canvas aspect ratio (`--game-w` / `--game-h`), the controls help line, and the touch gamepad (section 10). **None of that is reimplemented per game.**
 
 ## 4. Porting rules (`lib/games/<id>/`)
 
@@ -95,6 +104,7 @@ Keyboard rules:
 - A `GAME_KEYS` set with the exact `e.code` values the game uses. Ignore every other key.
 - `preventDefault()` only for `GAME_KEYS`, only while the run is active (started, not paused, not destroyed, not game over), never with Ctrl/Meta/Alt, never when the target is an `input`, `textarea`, `select` or `contentEditable`.
 - Edge-triggered actions (shoot, rotate, hard drop) use a `justPressed` map consumed once per update, like Asteroids' `pressed()`.
+- **Never filter by `e.isTrusted`.** The touch gamepad (section 10) sends synthetic `KeyboardEvent`s on `window`; they must reach the engine like real keys.
 
 Mouse / pointer rules (only if the original uses them):
 
@@ -130,15 +140,15 @@ Replacing a simulated game — `update public.games set ... where id = '<id>'` o
 
 ## 7. Files touched by a game spec
 
-| File                                         | Change                              |
-| -------------------------------------------- | ----------------------------------- |
-| `supabase/migrations/<ts>_add_game_<id>.sql` | new (insert or update in `games`)   |
-| `app/globals.css`                            | `.cover-<id>` (new game only)       |
-| `lib/games/<id>/*`                           | new engine                          |
-| `components/games/registry.ts`               | one new `REAL_GAMES` entry          |
-| `public/games/<id>/*`                        | assets, only if the game has images |
-| `lib/games/<id>/skins.ts`                    | palettes per skin (section 9)       |
-| `references/game-with-themes.md`             | the game's row (section 9)          |
+| File                                         | Change                               |
+| -------------------------------------------- | ------------------------------------ |
+| `supabase/migrations/<ts>_add_game_<id>.sql` | new (insert or update in `games`)    |
+| `app/globals.css`                            | `.cover-<id>` (new game only)        |
+| `lib/games/<id>/*`                           | new engine                           |
+| `components/games/registry.ts`               | one new `REAL_GAMES` entry + `touch` |
+| `public/games/<id>/*`                        | assets, only if the game has images  |
+| `lib/games/<id>/skins.ts`                    | palettes per skin (section 9)        |
+| `references/game-with-themes.md`             | the game's row (section 9)           |
 
 `components/game-player.tsx`, `components/games/game-canvas.tsx`, `lib/game-engine.ts`, `lib/games.ts`, `lib/scores.ts` and `saveScore` are **not** modified. If a game seems to need a change there, it is a platform change: call it out in the spec's decisions and keep it backwards compatible with Asteroids.
 
@@ -150,6 +160,7 @@ Replacing a simulated game — `update public.games set ... where id = '<id>'` o
 - Play `/juegos/<id>/jugar`: HUD updates, PAUSA freezes, hidden tab pauses without a `dt` jump, FIN and real game over open the modal, JUGAR DE NUEVO resets to `0 / 1 / initialLives`, arrows and space do not scroll the page, leaving and re-entering does not duplicate speed or input.
 - `/salon` shows the game's tab and the score; the global ranking includes it; `/juegos/<id>` shows real `best` / `plays`.
 - `/juegos/asteroids/jugar` still works and other simulated games are unchanged.
+- Touch (mobile emulation with `hasTouch` + `isMobile`, e.g. 390×844): the gamepad shows the declared buttons and no keyboard help line; every button does its action; holding works (and repeats only on `repeat` buttons); sliding a finger off a held button and lifting it releases the key; HUD, full canvas and gamepad fit without vertical scroll. On desktop the gamepad does not appear.
 - If the game has skins: `grep -rnE "#[0-9a-fA-F]{3,8}\b|rgba?\(|hsla?\(" lib/games/<id>/ --exclude=skins.ts` → no results; switching skin keeps score/level/lives and works while paused; the choice survives a reload.
 
 ## 9. Skins (CLÁSICO · NEÓN · RETRO)
@@ -170,3 +181,15 @@ Per game:
 5. Skins only change colors, glow and line width — never collision sizes, speeds, scoring or rules.
 6. Dark-mode rules (blocking, check with `contrastRatio` in a throwaway script): background luminance ≤ 0.05 and not lighter than `#050507`; playable entities ≥ 3:1 vs background; in-canvas text ≥ 4.5:1; decoratives (grid, separators, particles) 1.1–2:1; no repeated hex among piece/enemy types and ≥ 1.5:1 or clearly different hue between things the player must tell apart; no large fill with luminance > 0.4.
 7. Add/update the game's row in `references/game-with-themes.md` (✅ / ⚠️ / ❌ per skin, date, RETRO family, min contrast).
+
+## 10. Touch gamepad (SPEC 10)
+
+Platform pieces (already built, do not modify per game): `components/games/touch-controls.tsx` (`TouchControls`), `components/games/use-coarse-pointer.ts` (`useCoarsePointer`, `(pointer: coarse)`, `false` on the server) and the integration in `GamePlayer`, which renders the gamepad under the CRT instead of the controls help line only when the entry has `touch` and the pointer is coarse. The gamepad turns Pointer Events into synthetic `keydown`/`keyup` on `window` with each button's `code`, supports several fingers at once, and releases every key when the run stops (pause, game over, hidden tab) or unmounts.
+
+Per game:
+
+1. Every real game declares `touch` in its `REAL_GAMES` entry. Every `code` must be in the engine's `GAME_KEYS`; if the game changes its keys, `touch` changes in the same spec (there is no automatic check).
+2. Layout: directions on the `left` zone (glyph labels `←` `→` `↑` `↓`), actions on the `right` zone (short uppercase Spanish words, e.g. `DISPARO`, `ROTAR`). A zone with exactly the four arrows renders as a D-pad; a single arrow per zone renders as a wide key. Keep it to ≤ 4 buttons per zone.
+3. `repeat: true` only for keys the engine handles once per `keydown` and that should auto-repeat when held (e.g. CAÍDA's `←` `→` `↓`). Games that read the held key state (`keys[code]`) or ignore repeats do not use it.
+4. `aria` is a Spanish description of the action ("Mover a la izquierda", "Disparar").
+5. Engines need nothing else: no `isTrusted` checks, no touch listeners. Native gestures (swipe, drag) are out of scope unless a spec adds them.
