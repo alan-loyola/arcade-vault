@@ -151,6 +151,8 @@ export function TouchControls({ buttons, disabled }: TouchControlsProps) {
                 type="button"
                 className="touch-btn"
                 data-code={button.code}
+                // glifo (flecha, dirección) o palabra (acción): estilo distinto
+                data-kind={button.label.length === 1 ? "glyph" : "word"}
                 aria-label={button.aria}
                 aria-disabled={disabled}
                 onPointerDown={(e) => handlePointerDown(e, button)}
