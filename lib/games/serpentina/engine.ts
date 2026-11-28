@@ -1,4 +1,5 @@
 import type { CreateGameEngine } from "@/lib/game-engine";
+import { isSkinId, resolveSkin } from "@/lib/skins";
 import {
   BONUS_DURATION,
   BONUS_POINTS,
@@ -16,6 +17,7 @@ import {
   type FruitKind,
 } from "./constants";
 import { drawBoard, drawBonus, drawFruitCell, drawSnake } from "./render";
+import { SKINS } from "./skins";
 import {
   enqueueDir,
   freeCells,
@@ -53,13 +55,19 @@ function isTextField(target: EventTarget | null): boolean {
 function sameCell(a: Cell | null, b: Cell): boolean {
   return a !== null && a.x === b.x && a.y === b.y;
 }
-export const createSerpentinaEngine: CreateGameEngine = (canvas, callbacks) => {
+export const createSerpentinaEngine: CreateGameEngine = (
+  canvas,
+  callbacks,
+  options,
+) => {
   const ctx = canvas.getContext("2d");
   if (!ctx) {
     const noop = () => {};
     return { start: noop, pause: noop, resume: noop, destroy: noop };
   }
   // ── Estado (en cierre, no en el módulo) ─────────────────────────────────────
+  // Paleta del skin activo: solo cambia colores y glow, nunca el estado de juego
+  let palette = resolveSkin(SKINS, options?.skin);
   let snake: Cell[] = initialSnake(); // cabeza en [0]
   let dir: Dir = START_DIR;
   let dirQueue: Dir[] = [];
@@ -210,10 +218,10 @@ export const createSerpentinaEngine: CreateGameEngine = (canvas, callbacks) => {
   // Solo el juego: sin HUD ni overlays de pausa/fin (los pone la plataforma)
   function draw() {
     if (!ctx) return;
-    drawBoard(ctx);
-    if (fruit) drawFruitCell(ctx, fruit);
-    if (bonus) drawBonus(ctx, bonus);
-    drawSnake(ctx, snake, dir);
+    drawBoard(ctx, palette);
+    if (fruit) drawFruitCell(ctx, fruit, palette);
+    if (bonus) drawBonus(ctx, bonus, palette);
+    drawSnake(ctx, snake, dir, palette);
   }
   // ── Loop principal ──────────────────────────────────────────────────────────
   function stopLoop() {
@@ -269,6 +277,13 @@ export const createSerpentinaEngine: CreateGameEngine = (canvas, callbacks) => {
       paused = false;
       lastTime = null; // no acumula el tiempo pausado
       schedule();
+    },
+    // Cambia la paleta sin reiniciar ni tocar score/level/lives. Si el loop
+    // está parado (pausa o fin de partida) redibuja un frame para que se vea.
+    setSkin(skin) {
+      if (!isSkinId(skin) || destroyed) return;
+      palette = SKINS[skin];
+      if (started && rafId === null) draw();
     },
     destroy() {
       destroyed = true;

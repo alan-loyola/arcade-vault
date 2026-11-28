@@ -14,8 +14,13 @@ export interface Bonus extends Cell {
   /** ms de juego restantes. */
   remaining: number;
 }
-/** 8 filas de 8 caracteres; cada carácter es una clave de `palette` o "." (transparente). */
-export type PixelArt = { palette: Record<string, string>; rows: string[] };
+/** Colores de un pixel-art por clave de carácter (viven en skins.ts). */
+export type PixelColors = Record<string, string>;
+/**
+ * 8 filas de 8 caracteres; cada carácter es una clave de `PixelColors` o "."
+ * (transparente). `main` es la clave del color base (el del glow en NEÓN).
+ */
+export type PixelArt = { main: string; rows: string[] };
 // --- Tablero ---
 export const COLS = 20;
 export const ROWS = 20;
@@ -42,9 +47,4 @@ export const BONUS_BLINK_PERIOD = 200;
 // --- Entrada y loop ---
 export const DIR_QUEUE_MAX = 2;
 export const MAX_DT = 0.05; // s
-// --- Colores ---
-export const BG_COLOR = "#05070a";
-export const GRID_COLOR = "#0f1a14";
-export const BODY_COLOR = "#39ff6a";
-export const HEAD_COLOR = "#b6ffc8";
-export const EYE_COLOR = "#05070a";
+// Los colores viven en skins.ts (CLÁSICO, NEÓN, RETRO).

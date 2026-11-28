@@ -18,7 +18,9 @@ import {
   type Keys,
 } from "./entities";
 import { dist, rand } from "./utils";
-import type { GameCallbacks, GameEngine } from "@/lib/game-engine";
+import { SKINS } from "./skins";
+import type { GameCallbacks, GameEngine, GameOptions } from "@/lib/game-engine";
+import { isSkinId, resolveSkin } from "@/lib/skins";
 // Cumple el contrato común CreateGameEngine (lib/game-engine.ts).
 export type AsteroidsCallbacks = GameCallbacks;
 export type AsteroidsEngine = GameEngine;
@@ -28,6 +30,7 @@ const GAME_KEYS = new Set(["ArrowUp", "ArrowLeft", "ArrowRight", "Space"]);
 export function createAsteroidsEngine(
   canvas: HTMLCanvasElement,
   callbacks: AsteroidsCallbacks,
+  options?: GameOptions,
 ): AsteroidsEngine {
   const ctx = canvas.getContext("2d");
   if (!ctx) {
@@ -35,6 +38,8 @@ export function createAsteroidsEngine(
     return { start: noop, pause: noop, resume: noop, destroy: noop };
   }
   // ── Estado (en cierre, no en el módulo) ─────────────────────────────────────
+  // Paleta del skin activo (CLÁSICO por defecto); solo cambia la apariencia
+  let palette = resolveSkin(SKINS, options?.skin);
   let ship = new Ship();
   let bullets: Bullet[] = [];
   let asteroids: Asteroid[] = [];
@@ -231,13 +236,13 @@ export function createAsteroidsEngine(
   // Solo el juego: sin HUD ni overlay "GAME OVER" (los pone la plataforma)
   function draw(now: number) {
     if (!ctx) return;
-    ctx.fillStyle = "#000";
+    ctx.fillStyle = palette.background;
     ctx.fillRect(0, 0, W, H);
-    particles.forEach((p) => p.draw(ctx));
-    asteroids.forEach((a) => a.draw(ctx));
-    powerUps.forEach((p) => p.draw(ctx, now));
-    bullets.forEach((b) => b.draw(ctx));
-    ship.draw(ctx);
+    particles.forEach((p) => p.draw(ctx, palette));
+    asteroids.forEach((a) => a.draw(ctx, palette));
+    powerUps.forEach((p) => p.draw(ctx, palette, now));
+    bullets.forEach((b) => b.draw(ctx, palette));
+    ship.draw(ctx, palette);
   }
   // ── Loop principal ──────────────────────────────────────────────────────────
   function stopLoop() {
@@ -294,6 +299,13 @@ export function createAsteroidsEngine(
       paused = false;
       lastTime = null; // no acumula el tiempo pausado
       schedule();
+    },
+    // Cambia solo la paleta: no reinicia ni toca score/level/lives. Si el loop
+    // no corre (pausa o fin de partida) redibuja un frame para que se vea.
+    setSkin(skin) {
+      if (!isSkinId(skin) || destroyed) return;
+      palette = SKINS[skin];
+      if (started && rafId === null) draw(lastTs);
     },
     destroy() {
       destroyed = true;

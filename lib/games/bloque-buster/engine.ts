@@ -1,9 +1,9 @@
 import type { CreateGameEngine } from "@/lib/game-engine";
+import { isSkinId, resolveSkin } from "@/lib/skins";
 import {
   BALL_SIZE,
   BASE_BALL_VX,
   BASE_BALL_VY,
-  BG_COLOR,
   BLOCK_H,
   BLOCK_POINTS,
   BLOCK_W,
@@ -23,7 +23,9 @@ import {
   W,
 } from "./constants";
 import { LEVELS, type BlockColor } from "./levels";
+import { SKINS } from "./skins";
 import { drawFrame, drawSprite, EXPLOSION_FRAMES, SPRITES } from "./sprites";
+import { drawVectorScene } from "./vector";
 // Cumple el contrato común CreateGameEngine (lib/game-engine.ts).
 // Portado de references/started-games/04-arkanoid/game.js sin HUD, overlays,
 // pausa propia, selector de nivel ni sonido.
@@ -59,6 +61,7 @@ function collideAABB(a: Rect, b: Rect): boolean {
 export const createBloqueBusterEngine: CreateGameEngine = (
   canvas,
   callbacks,
+  options,
 ) => {
   const ctx = canvas.getContext("2d");
   if (!ctx) {
@@ -86,6 +89,8 @@ export const createBloqueBusterEngine: CreateGameEngine = (
   let lives = INITIAL_LIVES;
   let level = 1;
   let state: State = "playing";
+  // Skin actual (solo apariencia; setSkin lo cambia sin reiniciar)
+  let palette = resolveSkin(SKINS, options?.skin);
   // Teclas mantenidas
   const keys: Record<GameKey, boolean> = {
     ArrowLeft: false,
@@ -261,9 +266,17 @@ export const createBloqueBusterEngine: CreateGameEngine = (
   // Solo el juego: sin HUD ni overlays (los pone la plataforma)
   function draw() {
     if (!ctx) return;
-    ctx.fillStyle = BG_COLOR;
+    ctx.fillStyle = palette.background;
     ctx.fillRect(0, 0, W, H);
-    if (!imageLoaded || !image) return; // frame negro hasta cargar la imagen
+    // Fondo vacío hasta cargar la imagen en todos los skins, para que la
+    // partida arranque igual
+    if (!imageLoaded || !image) return;
+    // NEÓN / RETRO: primitivas con la paleta
+    if (palette.kind === "vector") {
+      drawVectorScene(ctx, palette, { paddle, ball, blocks, explosions });
+      return;
+    }
+    // CLÁSICO: spritesheet original
     for (const block of blocks) {
       if (block.alive)
         drawSprite(
@@ -370,6 +383,13 @@ export const createBloqueBusterEngine: CreateGameEngine = (
       paused = false;
       lastTime = null; // no acumula el tiempo pausado
       schedule();
+    },
+    // Cambia solo la paleta: no reinicia ni toca score/level/lives. Si el loop
+    // no corre (pausa o fin de partida) redibuja un frame para que se vea.
+    setSkin(skin) {
+      if (!isSkinId(skin) || destroyed) return;
+      palette = SKINS[skin];
+      if (started && rafId === null) draw();
     },
     destroy() {
       destroyed = true;

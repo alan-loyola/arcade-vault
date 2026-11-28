@@ -1,6 +1,13 @@
 // Frutas de SERPENTINA: pixel-art original de 8×8 dibujado en código (SPEC 09).
 // No usa references/source-assets/snake-assets/ (arte de un juego comercial).
-import { CELL, type FruitKind, type PixelArt } from "./constants";
+// Aquí solo está la forma; los colores de cada carácter salen de la paleta del
+// skin (skins.ts).
+import {
+  CELL,
+  type FruitKind,
+  type PixelArt,
+  type PixelColors,
+} from "./constants";
 /** Lado del arte en píxeles lógicos. */
 export const ART_SIZE = 8;
 /** Escala de cada píxel lógico: 8 × 3 = 24 px, una celda. */
@@ -9,13 +16,7 @@ export const ART_SCALE = CELL / ART_SIZE;
 export const TRANSPARENT = ".";
 export const FRUIT_ART: Record<FruitKind, PixelArt> = {
   apple: {
-    palette: {
-      r: "#ff3b4e",
-      h: "#ffc2ca",
-      d: "#a8102a",
-      s: "#8b5a2b",
-      l: "#39d353",
-    },
+    main: "r",
     rows: [
       "...sl...",
       "...sll..",
@@ -28,7 +29,7 @@ export const FRUIT_ART: Record<FruitKind, PixelArt> = {
     ],
   },
   cherry: {
-    palette: { r: "#ff1f4b", h: "#ffb3c4", d: "#9c0a2c", g: "#39d353" },
+    main: "r",
     rows: [
       "....gg..",
       "....g...",
@@ -41,7 +42,7 @@ export const FRUIT_ART: Record<FruitKind, PixelArt> = {
     ],
   },
   grape: {
-    palette: { p: "#a24bff", l: "#d7a8ff", d: "#5e1fa8", g: "#39d353" },
+    main: "p",
     rows: [
       "....g...",
       "...ggg..",
@@ -54,7 +55,7 @@ export const FRUIT_ART: Record<FruitKind, PixelArt> = {
     ],
   },
   lemon: {
-    palette: { y: "#ffe94a", h: "#fffbd0", o: "#c9a600", g: "#39d353" },
+    main: "y",
     rows: [
       "......g.",
       "..yyyyg.",
@@ -69,7 +70,7 @@ export const FRUIT_ART: Record<FruitKind, PixelArt> = {
 };
 /** Estrella dorada del bonus. */
 export const BONUS_ART: PixelArt = {
-  palette: { y: "#ffd700", w: "#fff5b0", o: "#c9a000" },
+  main: "y",
   rows: [
     "...yy...",
     "...yy...",
@@ -81,21 +82,19 @@ export const BONUS_ART: PixelArt = {
     "o......o",
   ],
 };
-/** Pinta `art` ocupando la celda (cellX, cellY) del tablero. */
-export function drawFruit(
+function paintPixels(
   ctx: CanvasRenderingContext2D,
   art: PixelArt,
-  cellX: number,
-  cellY: number,
+  colors: PixelColors,
+  ox: number,
+  oy: number,
 ): void {
-  const ox = cellX * CELL;
-  const oy = cellY * CELL;
   for (let y = 0; y < art.rows.length; y++) {
     const row = art.rows[y];
     for (let x = 0; x < row.length; x++) {
       const key = row[x];
       if (key === TRANSPARENT) continue;
-      const color = art.palette[key];
+      const color = colors[key];
       if (!color) continue;
       ctx.fillStyle = color;
       ctx.fillRect(
@@ -106,4 +105,28 @@ export function drawFruit(
       );
     }
   }
+}
+/**
+ * Pinta `art` con `colors` ocupando la celda (cellX, cellY) del tablero.
+ * Con `glow` > 0 hace una pasada con sombra del color base y otra encima sin
+ * sombra, para que el halo no tiña el interior del dibujo; deja shadowBlur a 0.
+ */
+export function drawFruit(
+  ctx: CanvasRenderingContext2D,
+  art: PixelArt,
+  colors: PixelColors,
+  cellX: number,
+  cellY: number,
+  glow = 0,
+): void {
+  const ox = cellX * CELL;
+  const oy = cellY * CELL;
+  const glowColor = colors[art.main];
+  if (glow > 0 && glowColor) {
+    ctx.shadowColor = glowColor;
+    ctx.shadowBlur = glow;
+    paintPixels(ctx, art, colors, ox, oy);
+  }
+  ctx.shadowBlur = 0;
+  paintPixels(ctx, art, colors, ox, oy);
 }
